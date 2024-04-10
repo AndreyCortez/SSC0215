@@ -14,6 +14,18 @@ typedef struct
     char* format;
 } table;
 
+typedef struct
+{
+    /* data */
+}table_header;
+
+typedef struct
+{
+    /* data */
+}table_item;
+
+
+
 table *table_create(void **raw_data, char* format);
 void *add_raw_item(table* table, void *raw_item);
 
