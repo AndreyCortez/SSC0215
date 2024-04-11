@@ -1,36 +1,37 @@
 #include <csv.h>
 
-CSV_handler *csv_parse(FILE *file, bool skip_first_line)
+CSV_handler *csv_parse(FILE *file, bool has_header)
 {
     char line[MAX_LINE_LENGTH];
     char *token;
 
-    int data_size = skip_first_line ? -1 : 0;
+    int data_size = has_header ? -1 : 0;
     int line_size = 0;
+
+    int counter = 0;
 
     while (fgets(line, sizeof(line), file))
     {
-        int counter = 0;
         token = strtok(line, ",");
 
         while (token != NULL)
         {
-
-            counter += 1;
-
             char *newline = strchr(token, '\n');
 
             if (newline)
             {
                 *newline = '\0';
-                line_size = counter;
-                counter = 0;
                 data_size += 1;
+                line_size = counter;
+                counter = 0; 
             }
 
             token = strtok(NULL, ",");
+            if (token != NULL) counter += 1;
         }
     }
+    
+    if (counter == 0) data_size -= 1;
 
     printf("O arquivo possui %d linhas e %d colunas\n", data_size, line_size);
 
@@ -49,16 +50,53 @@ CSV_handler *csv_parse(FILE *file, bool skip_first_line)
 
     fseek(file, 0, SEEK_SET);
 
+    if(has_header)
+    {
+        csv_handler->header = (char **)malloc(line_size * sizeof(char *));
+        bool header_complete = false;
+
+        while (fgets(line, sizeof(line), file) && !header_complete)
+        {
+            int counter = 0;
+            token = strtok(line, ",");
+
+            while (token != NULL && !header_complete)
+            {
+                char *field_data;
+                
+                field_data = malloc((strlen(token) + 1) * sizeof(char));
+                strcpy(field_data, token);
+
+                csv_handler->header[counter] = field_data;
+
+                counter += 1;
+
+                char *newline = strchr(token, '\n');
+
+                if (newline)
+                {
+                    fseek(file, 0, SEEK_SET);
+                    header_complete = true;
+                }
+
+                token = strtok(NULL, ",");
+                
+            }
+        }
+    }
+
     int current_row = 0;
     int current_collum = 0;
 
     char c;
-
-    while ((c = fgetc(file)) != EOF)
+    
+    while ((c = fgetc(file)) != EOF && has_header)
     {
         if (c == '\n')
             break;
     }
+
+    
 
     while (fgets(line, sizeof(line), file))
     {
@@ -111,4 +149,75 @@ void csv_print_head(CSV_handler *handler)
 }
 
 
+int csv_find_collumn(CSV_handler* handler, char* header)
+{
+    for (int i = 0; i < handler->num_collumns; i++)
+    {
+        if (strcmp(header, handler->header[i]) == 0)
+        {
+            return i;
+        }
+    }
 
+    return -1;
+}
+
+char **csv_retrieve_collumn(CSV_handler* handler, char* collumn)
+{
+    int collumn_num = csv_find_collumn(handler, collumn);
+
+    if (collumn_num != -1)
+    {
+        char **result = (char **)malloc(handler->num_rows * sizeof(char *));
+        for (int i = 0; i < handler->num_rows; i++)
+        {
+            //printf("%s", handler->data[i][collumn_num]);
+            char *res_str = handler->data[i][collumn_num];
+            result[i] = malloc((strlen(res_str) + 1) * sizeof(char));
+            strcpy(result[i], res_str);
+        }
+        return result;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+
+CSV_handler *csv_retrieve_collumns(CSV_handler* handler, char** collumns, int qtd_collumns)
+{
+    for (int i = 0; i< qtd_collumns; i++)
+    {
+        if (csv_find_collumn(handler, collumns[i]) == -1)
+        return NULL;
+    }
+
+    CSV_handler *ret_handler;
+    ret_handler = malloc(sizeof(CSV_handler));
+
+    ret_handler->num_rows = handler->num_rows;
+    ret_handler->num_collumns = qtd_collumns;
+    ret_handler->data = malloc(ret_handler->num_rows * sizeof(char**));
+    ret_handler->header = malloc((qtd_collumns * sizeof(char *)));
+    
+    for (int i = 0; i< ret_handler->num_rows; i++)
+    {
+        ret_handler->data[i] = malloc(ret_handler->num_collumns * sizeof(char*));
+    }
+
+    for (int i = 0; i< qtd_collumns; i++)
+    {
+        ret_handler->header[i] = malloc((strlen(collumns[i]) + 1) * sizeof(char));
+        strcpy(ret_handler->header[i], collumns[i]);
+        
+        char **aux_data = csv_retrieve_collumn(handler, collumns[i]);
+
+        for (int j = 0; j < ret_handler->num_rows; j++)
+            ret_handler->data[j][i] = aux_data[j];
+
+        free(aux_data);
+    }
+
+    return ret_handler;
+}
