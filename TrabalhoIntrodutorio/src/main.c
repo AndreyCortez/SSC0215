@@ -27,6 +27,7 @@ int main()
 
     const char *collumns[] = {"Name", "Age", "Nationality", "Club"};
     const int num_collumns = 4;
+    const char format[] = "%s %d %s %s";
     CSV_handler *new_hand = csv_retrieve_collumns(hand, collumns, num_collumns);
 
     int col = csv_find_collumn(hand, "Club");
@@ -42,8 +43,11 @@ int main()
 
     csv_print_head(new_hand);
 
-    Table *new_table;
-    new_table = table_create_from_csv(new_hand, "%s %d %s %s");
+    void *sla_man = format_data(format, new_hand->data[0]);
+    print_bytes(sla_man, 100);
+
+    // Table *new_table;
+    // new_table = table_create_from_csv(new_hand, "%s %d %s %s");
 
     // Fechar o arquivo
     fclose(file);
