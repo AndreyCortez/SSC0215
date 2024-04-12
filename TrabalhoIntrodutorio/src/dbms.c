@@ -15,9 +15,6 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
 
         table->data[i] = format_data(format, raw_data[i]);
 
-        printf("%d\n", format_len(format, raw_data[i]));
-        printf("oi\n");
-
         RegHeader reg_header;
         reg_header.removed = 0;
         reg_header.tam_reg = format_len(format, raw_data[i]) + len_reg_header;
@@ -119,7 +116,7 @@ int format_len(const char *format, char **data)
     {
         if (*ptr == '%')
         {
-            printf("oi\n");
+            //printf("oi\n");
             switch (*(ptr + 1))
             {
             case 'd':

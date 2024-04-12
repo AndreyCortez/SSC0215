@@ -36,8 +36,8 @@ int main()
         if (strcmp(new_hand->data[i][3], hand->data[i][col]) != 0)
         {
             printf("errado aqui\n");
+            printf("%s\n", hand->data[i][col]);
         }
-        printf("%s\n", hand->data[i][col]);
     }
 
     csv_print_head(new_hand);

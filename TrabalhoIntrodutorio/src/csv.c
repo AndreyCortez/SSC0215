@@ -115,7 +115,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
             }
             else
             {
-                printf("oi?");
                 field_data = malloc(7 * sizeof(char));
                 strcpy(field_data, "(NULL)");
             }

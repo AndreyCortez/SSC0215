@@ -27,4 +27,4 @@ run:
 
 # Limpar os arquivos objeto e o executável
 clean:
-	rm -f $(BIN_DIR)/*.o $(BIN_DIR)/$(TARGET)
+	rm -f $(BIN_DIR)/*
