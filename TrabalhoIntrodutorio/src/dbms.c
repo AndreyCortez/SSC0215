@@ -3,6 +3,7 @@
 Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns)
 {
     Table *table = malloc(sizeof(table));
+
     table->data = malloc(sizeof(void *) * num_rows);
     table->register_headers = malloc(sizeof(RegHeader) * num_rows);
 
@@ -11,7 +12,11 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
 
     for (int i = 0; i < num_rows; i++)
     {
+
         table->data[i] = format_data(format, raw_data[i]);
+
+        printf("%d\n", format_len(format, raw_data[i]));
+        printf("oi\n");
 
         RegHeader reg_header;
         reg_header.removed = 0;
@@ -114,6 +119,7 @@ int format_len(const char *format, char **data)
     {
         if (*ptr == '%')
         {
+            printf("oi\n");
             switch (*(ptr + 1))
             {
             case 'd':

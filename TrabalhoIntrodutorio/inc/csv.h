@@ -14,10 +14,15 @@ typedef struct
     char ***data;
     int num_rows;
     int num_collumns;
+    char **header;
 } CSV_handler;
 
-CSV_handler *csv_parse(FILE *file, bool skip_first_line);
+CSV_handler *csv_parse(FILE *file, bool has_header);
+char **csv_retrieve_collumn(CSV_handler* handler, char* collumn);
+CSV_handler *csv_retrieve_collumns(CSV_handler* handler, char** collumns, int qtd_collumns);
+
 void csv_print_head(CSV_handler* handler);
+int csv_find_collumn(CSV_handler* handler, char* header);
 
 
 #endif

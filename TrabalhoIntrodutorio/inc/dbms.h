@@ -40,7 +40,7 @@ typedef struct
 
 
 Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns);
-Table *table_create_from_csv(CSV_handler* handler);
+Table *table_create_from_csv(CSV_handler* handler, char *format);
 
 void table_save(Table *tab);
 TableHandler *table_read(char *path, char *format);
