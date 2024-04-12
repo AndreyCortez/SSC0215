@@ -44,6 +44,12 @@ Table *table_create_from_csv(CSV_handler *handler, char *format)
     return table_create(handler->data, format, handler->num_rows, handler->num_collumns);
 }
 
+
+void table_save(Table *table, char* path)
+{
+    
+}
+
 void *format_data(const char *format, char **data)
 {
     const char *ptr = format;
