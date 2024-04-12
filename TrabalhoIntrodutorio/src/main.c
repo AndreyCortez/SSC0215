@@ -43,11 +43,14 @@ int main()
 
     csv_print_head(new_hand);
 
+    printf("%s %s %s %s\n", new_hand->data[0][0], new_hand->data[0][1], new_hand->data[0][2], new_hand->data[0][3]);
+    int len = format_len(format, new_hand->data[0]);
+    printf("%d\n", len);
     void *sla_man = format_data(format, new_hand->data[0]);
-    print_bytes(sla_man, 100);
+    print_bytes(sla_man, len);
 
-    // Table *new_table;
-    // new_table = table_create_from_csv(new_hand, "%s %d %s %s");
+    Table *new_table;
+    new_table = table_create_from_csv(new_hand, "%s %d %s %s");
 
     // Fechar o arquivo
     fclose(file);

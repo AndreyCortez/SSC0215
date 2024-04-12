@@ -2,10 +2,11 @@
 
 Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns)
 {
-    Table *table = malloc(sizeof(table));
+    Table *table;
+    table = (Table *)malloc(sizeof(Table));
 
-    table->data = malloc(sizeof(void *) * num_rows);
-    table->register_headers = malloc(sizeof(RegHeader) * num_rows);
+    table->data = (void **)malloc(sizeof(void *) * num_rows);
+    table->register_headers = (RegHeader *)malloc(sizeof(RegHeader) * num_rows);
 
     uint64_t next_byte_offset = 0;
     const uint32_t len_reg_header = 24;
@@ -98,7 +99,7 @@ void *format_data(const char *format, char **data)
         }
         else
         {
-            putchar(*ptr);
+            //putchar(*ptr);
             ptr++;
         }
     }
@@ -112,11 +113,12 @@ int format_len(const char *format, char **data)
     int size = 0;
     int counter = 0;
 
+    // printf("%s\n", format);
+
     while (*ptr != '\0')
     {
         if (*ptr == '%')
         {
-            //printf("oi\n");
             switch (*(ptr + 1))
             {
             case 'd':
@@ -142,7 +144,6 @@ int format_len(const char *format, char **data)
         }
         else
         {
-            putchar(*ptr);
             ptr++;
         }
     }
