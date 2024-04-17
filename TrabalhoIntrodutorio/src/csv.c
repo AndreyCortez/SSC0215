@@ -1,5 +1,37 @@
 #include <csv.h>
 
+char *paxtok (char *str, char *seps) {
+    static char *tpos, *tkn, *pos = NULL;
+    static char savech;
+
+    if (str != NULL) {
+        pos = str;
+        savech = 'x';
+    } else {
+        if (pos == NULL)
+            return NULL;
+        while (*pos != '\0')
+            pos++;
+        *pos++ = savech;
+    }
+
+    if (savech == '\0')
+        return NULL;
+
+    tpos = pos;
+    while (*tpos != '\0') {
+        tkn = strchr (seps, *tpos);
+        if (tkn != NULL)
+            break;
+        tpos++;
+    }
+
+    savech = *tpos;
+    *tpos = '\0';
+
+    return pos;
+}
+
 CSV_handler *csv_parse(FILE *file, bool has_header)
 {
     char line[MAX_LINE_LENGTH];
@@ -12,7 +44,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
 
     while (fgets(line, sizeof(line), file))
     {
-        token = strtok(line, ",");
+        token = paxtok(line, ",");
 
         while (token != NULL)
         {
@@ -26,7 +58,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
                 counter = 0;
             }
 
-            token = strtok(NULL, ",");
+            token = paxtok(NULL, ",");
             if (token != NULL)
                 counter += 1;
         }
@@ -35,7 +67,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     if (counter == 0)
         data_size -= 1;
 
-    //printf("O arquivo possui %d linhas e %d colunas\n", data_size, line_size);
 
     CSV_handler *csv_handler;
     csv_handler = malloc(sizeof(CSV_handler));
@@ -60,7 +91,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
         while (fgets(line, sizeof(line), file) && !header_complete)
         {
             int counter = 0;
-            token = strtok(line, ",");
+            token = paxtok(line, ",");
 
             while (token != NULL && !header_complete)
             {
@@ -82,7 +113,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
                 }
 
                 
-                token = strtok(NULL, ",");
+                token = paxtok(NULL, ",");
             }
         }
     }
@@ -103,21 +134,22 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     while (fgets(line, sizeof(line), file))
     {
 
-        token = strtok(line, ",");
+        token = paxtok(line, ",");
+        //printf("%s, ", token);
         char *prev_token_end = line;
-
         while (token != NULL)
         {
             char *field_data;
             char *newline = strchr(token, '\n');
-
+            
             if (newline)
             {
                 *newline = '\0';
             }
 
+                
             // Checa se o campo está vazio ou se possui dados
-            if (token == prev_token_end && token != newline)
+            if (prev_token_end == token && token != newline && strcmp(token, "") != 0)
             {
                 field_data = malloc((strlen(token) + 1) * sizeof(char));
                 strcpy(field_data, token);
@@ -126,7 +158,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
             {
                 field_data = malloc(2 * sizeof(char));
                 field_data = "$";
-                printf("%s %d %d\n", field_data, current_row, current_collum);
+                //printf("%s %d %d\n", field_data, current_row, current_collum);
             }
 
             csv_handler->data[current_row][current_collum] = field_data;
@@ -143,10 +175,12 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
             }
 
             prev_token_end = token + strlen(token) + 1;
-            token = strtok(NULL, ",");
+            token = paxtok(NULL, ",");
+
+            // 1 dado2.csv jogador.bin
+            
         }
     }
-
     return csv_handler;
 }
 
@@ -155,7 +189,7 @@ void csv_print_head(CSV_handler *handler)
     if (handler == NULL)
         return;
 
-    int num_lines = (5 < (handler->num_rows)) ? 5 : handler->num_rows;
+    int num_lines = (10 < (handler->num_rows)) ? 10 : handler->num_rows;
 
     for (int i = 0; i < num_lines; i++)
     {

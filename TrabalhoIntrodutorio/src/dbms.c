@@ -14,7 +14,7 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
 
     for (int i = 0; i < num_rows; i++)
     {
-
+        
         table->data[i] = format_data(format, raw_data[i]);
 
         RegHeader reg_header;
@@ -109,6 +109,8 @@ void *format_data(const char *format, char **data)
             int size;
             float value_f;
 
+            //printf("%s\n", data[counter]);
+
             switch (*(ptr + 1))
             {
             case 'd':
@@ -116,6 +118,7 @@ void *format_data(const char *format, char **data)
                 value_d = atoi(data[counter]);
                 if (value_d == 0 && strcmp(data[counter], "0") != 0)
                 {
+                    // printf("inteiro faltando\n");
                     value_d = -1;
                 }
                 memcpy(aux_ptr, &value_d, sizeof(int));

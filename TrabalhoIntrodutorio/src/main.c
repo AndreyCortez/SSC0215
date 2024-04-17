@@ -37,7 +37,7 @@ int main()
 
         // Chamar a função para analisar o CSV
         CSV_handler *hand = csv_parse(file, true);
-        //csv_print_head(hand);
+        // csv_print_head(hand);
 
         // const char *collumns[] = {"Name", "Age", "Nationality", "Club"};
         // const int num_collumns = 4;
