@@ -5,7 +5,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     char line[MAX_LINE_LENGTH];
     char *token;
 
-    int data_size = has_header ? -1 : 0;
+    int data_size = 0;
     int line_size = 0;
 
     int counter = 0;
@@ -35,7 +35,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     if (counter == 0)
         data_size -= 1;
 
-    printf("O arquivo possui %d linhas e %d colunas\n", data_size, line_size);
+    //printf("O arquivo possui %d linhas e %d colunas\n", data_size, line_size);
 
     CSV_handler *csv_handler;
     csv_handler = malloc(sizeof(CSV_handler));
@@ -81,6 +81,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
                     header_complete = true;
                 }
 
+                
                 token = strtok(NULL, ",");
             }
         }
@@ -90,6 +91,8 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     int current_collum = 0;
 
     char c;
+
+    fseek(file, 0, SEEK_SET);
 
     while ((c = fgetc(file)) != EOF && has_header)
     {
@@ -106,29 +109,35 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
         while (token != NULL)
         {
             char *field_data;
+            char *newline = strchr(token, '\n');
+
+            if (newline)
+            {
+                *newline = '\0';
+            }
 
             // Checa se o campo está vazio ou se possui dados
-            if (token == prev_token_end)
+            if (token == prev_token_end && token != newline)
             {
                 field_data = malloc((strlen(token) + 1) * sizeof(char));
                 strcpy(field_data, token);
             }
             else
             {
-                field_data = malloc(7 * sizeof(char));
-                strcpy(field_data, "(NULL)");
+                field_data = malloc(2 * sizeof(char));
+                field_data = "$";
+                printf("%s %d %d\n", field_data, current_row, current_collum);
             }
 
             csv_handler->data[current_row][current_collum] = field_data;
-            // printf("%s %d %d\n", csv_handler->data[current_row][current_collum], current_row, current_collum);
+            
+            //printf("%s %d %d\n", csv_handler->data[current_row][current_collum], current_row, current_collum);
 
             current_collum += 1;
 
-            char *newline = strchr(token, '\n');
-
             if (newline)
             {
-                *newline = '\0';
+                
                 current_row += 1;
                 current_collum = 0;
             }
@@ -150,7 +159,7 @@ void csv_print_head(CSV_handler *handler)
 
     for (int i = 0; i < num_lines; i++)
     {
-        for (int j = 0; j < handler->num_collumns; j++)
+        for (int j = 0; j <= handler->num_collumns; j++)
         {
             printf("%s, ", handler->data[i][j]);
         }

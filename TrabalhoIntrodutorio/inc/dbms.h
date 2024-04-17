@@ -19,7 +19,7 @@ typedef struct
     char *format;
     int num_fields;
     int field_types;
-} TableHandler;
+} TableHeader;
 
 
 typedef struct
@@ -34,7 +34,7 @@ typedef struct
 {
     void **data;
     int data_size;
-    TableHandler *handler;
+    TableHeader *handler;
     RegHeader *register_headers;
 } Table;
 
@@ -43,7 +43,9 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
 Table *table_create_from_csv(CSV_handler* handler, char *format);
 
 void table_save(Table *table, char* path);
-TableHandler *table_read(char *path, char *format);
+
+
+TableHeader table_read(char *path, char *format);
 // char table_seek(char);
 
 void *add_raw_item(Table *Table, void *raw_item);
