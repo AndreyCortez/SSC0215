@@ -126,6 +126,13 @@ void *format_data(const char *format, char **data)
                 break;
 
             case 's':
+                if (strcmp(data[counter], "$") == 0)
+                {
+                    size = 0;
+                    memcpy(aux_ptr, &size, sizeof(int));
+                }
+                else 
+                {
                 size = strlen(data[counter]);
                 
                 memcpy(aux_ptr, &size, sizeof(int));
@@ -133,6 +140,7 @@ void *format_data(const char *format, char **data)
 
                 memcpy(aux_ptr, data[counter], size);
                 aux_ptr += size;
+                }
                 break;
 
             case 'f':
@@ -180,7 +188,10 @@ int format_len(const char *format, char **data)
                 break;
 
             case 's':
-                size += strlen(data[counter]) + sizeof(int);
+                if (strcmp(data[counter], "$") == 0)
+                    size += sizeof(int);
+                else
+                    size += strlen(data[counter]) + sizeof(int);
                 break;
 
             case 'f':
