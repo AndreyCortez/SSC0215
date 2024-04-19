@@ -12,12 +12,47 @@ void print_bytes(const void *ptr, size_t size)
     printf("\n");
 }
 
+void print_formated_register_data(void *data)
+{
+    void *aux_data = data;
+    aux_data += sizeof(int) * 2;
+    int32_t tam_nome;
+    memcpy(&tam_nome, aux_data, sizeof(tam_nome));
+    aux_data += sizeof(tam_nome);
+
+    // printf("tam_nome: %d\n", tam_nome);
+    if (tam_nome != 0)
+        printf("Nome do Jogador: %.*s\n", tam_nome, (char*)aux_data);
+    else
+        printf("Nome do Jogador: SEM DADO\n");
+    
+    aux_data += tam_nome;
+    memcpy(&tam_nome, aux_data, sizeof(tam_nome));
+    aux_data += sizeof(tam_nome);
+
+    if (tam_nome != 0)
+        printf("Nacionalidade do Jogador: %.*s\n", tam_nome, (char*)aux_data);
+    else
+        printf("Nacionalidade do Jogador: SEM DADO\n");
+
+    aux_data += tam_nome;
+    memcpy(&tam_nome, aux_data, sizeof(tam_nome));
+    aux_data += sizeof(tam_nome);
+
+    if (tam_nome != 0)
+        printf("Clube do Jogador: %.*s\n", tam_nome, (char*)aux_data);
+    else
+        printf("Clube do Jogador: SEM DADO\n");
+
+    printf("\n");
+}
 
 // main séria
 int main()
 {
 
     int command;
+    const char format[] = "%d %d %s %s %s";
 
     scanf("%d", &command);
 
@@ -35,23 +70,70 @@ int main()
             return 1;
         }
 
-        // Chamar a função para analisar o CSV
         CSV_handler *hand = csv_parse(file, true);
-        // csv_print_head(hand);
-
-        // const char *collumns[] = {"Name", "Age", "Nationality", "Club"};
-        // const int num_collumns = 4;
-        // CSV_handler *new_hand = csv_retrieve_collumns(hand, (char **)collumns, num_collumns);
-
-        const char format[] = "%d %d %s %s %s";
+        
         Table *new_table;
         new_table = table_create_from_csv(hand, (char*)format);
 
         table_save(new_table, bin_path);
         binarioNaTela(bin_path);
 
-        // Fechar o arquivo
         fclose(file);
+    }
+    else if (command == 2)
+    {
+        char bin_path[100];
+        
+        scanf("%s", bin_path);
+        Table* table = table_access(bin_path);
+
+        if (table == NULL)
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return 0;
+        }
+
+
+        int registers_read = 0;
+        while (table_move_to_next_register(table))
+        {
+            void* current_data = table->current_register.data;
+            print_formated_register_data(current_data);
+            registers_read += 1;
+        }
+
+        if(!registers_read)
+        {
+            printf("Registro inexistente.\n\n");
+        }
+
+    }
+    else if (command == 3)
+    {
+        char bin_path[100];
+        int qtd_buscas;
+        
+        scanf("%s %d", bin_path, &qtd_buscas);
+        Table* table = table_access(bin_path);
+
+        
+
+        for (int i = 0; i < qtd_buscas; i++)
+        {
+            int num_parametros;
+            scanf ("%d", &num_parametros);
+
+            for (int j = 0; j < num_parametros; j++)
+            {
+                
+            }
+
+            int offset_id = 0;
+            int offset_idade = 4;
+            int offset_nome_jogador = 8
+            
+        }
+        
     }
 
     return 0;
@@ -59,6 +141,7 @@ int main()
 
 // 1 dado1.csv jogador.bin
 // 1 dado2.csv jogador.bin
+// 2 jogador.bin
 
 // main teste
 // int main()

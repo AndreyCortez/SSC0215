@@ -9,18 +9,8 @@
 
 #include "csv.h"
 
-typedef struct
-{
-    char status;
-    int64_t top;
-    int64_t next_byte_offset;
-    int32_t num_reg;
-    int32_t num_removed;
-    char *format;
-    int num_fields;
-    int field_types;
-} TableHeader;
-
+#define register_header_size 13
+#define table_header_size 25
 
 typedef struct
 {
@@ -34,7 +24,19 @@ typedef struct
 {
     void **data;
     int data_size;
-    TableHeader *handler;
+
+
+    char status;
+    int64_t top;
+    int64_t next_byte_offset;
+    int32_t num_reg;
+    int32_t pos_reg;
+    int32_t num_removed;
+    char *format;
+    int num_fields;
+    int field_types;
+    FILE* f_pointer;
+    RegHeader current_register;
     RegHeader *register_headers;
 } Table;
 
@@ -45,7 +47,8 @@ Table *table_create_from_csv(CSV_handler* handler, char *format);
 void table_save(Table *table, char* path);
 
 
-TableHeader table_read(char *path, char *format);
+Table* table_access(char *path);
+bool table_move_to_next_register(Table* table);
 // char table_seek(char);
 
 void *add_raw_item(Table *Table, void *raw_item);

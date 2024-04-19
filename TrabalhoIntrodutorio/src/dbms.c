@@ -1,5 +1,6 @@
 #include "dbms.h"
 
+
 Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns)
 {
     Table *table;
@@ -9,8 +10,7 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
     table->data_size = num_rows;
     table->register_headers = (RegHeader *)malloc(sizeof(RegHeader) * num_rows);
 
-    uint64_t next_byte_offset = 25;
-    const uint32_t len_reg_header = 13;
+    uint64_t next_byte_offset = table_header_size;
 
     for (int i = 0; i < num_rows; i++)
     {
@@ -19,7 +19,7 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
 
         RegHeader reg_header;
         reg_header.removed = '0';
-        reg_header.tam_reg = format_len(format, raw_data[i]) + len_reg_header;
+        reg_header.tam_reg = format_len(format, raw_data[i]) + register_header_size;
         next_byte_offset += reg_header.tam_reg;
         reg_header.data = table->data[i];
         reg_header.prox_reg = -1;
@@ -27,16 +27,13 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
         table->register_headers[i] = reg_header;
     }
 
-    TableHeader *handler = malloc(sizeof(TableHeader));
 
-    handler->status = '1';
-    handler->num_fields = num_collumns;
-    handler->num_reg = num_rows;
-    handler->num_removed = 0;
-    handler->next_byte_offset = next_byte_offset;
-    handler->top = -1;
-
-    table->handler = handler;
+    table->status = '1';
+    table->num_fields = num_collumns;
+    table->num_reg = num_rows;
+    table->num_removed = 0;
+    table->next_byte_offset = next_byte_offset;
+    table->top = -1;
 
     return table;
 }
@@ -46,7 +43,7 @@ Table *table_create_from_csv(CSV_handler *handler, char *format)
     return table_create(handler->data, format, handler->num_rows, handler->num_collumns);
 }
 
-void write_table_header(FILE* arquivo, TableHeader* tabhead)
+void write_table_header(FILE* arquivo, Table* tabhead)
 {
     fwrite(&(tabhead->status), sizeof(tabhead->status), 1, arquivo);
     fwrite(&(tabhead->top), sizeof(tabhead->top), 1, arquivo);
@@ -73,22 +70,96 @@ void table_save(Table *table, char* path)
         return;
     }
 
-    // Escreve o cabeçalho do arquivo
-
-    TableHeader *tabhead = table->handler;
-
-    write_table_header(arquivo, tabhead);
+    write_table_header(arquivo, table);
     
     
     for (int i = 0; i < table->data_size; i++)
     {
         RegHeader reghead = table->register_headers[i];
         write_register_header(arquivo, reghead);
-        fwrite((table->data[i]), sizeof(char), (reghead.tam_reg - 13), arquivo);
+        fwrite((table->data[i]), sizeof(char), (reghead.tam_reg - register_header_size), arquivo);
     }
 
     fclose(arquivo);
 }
+
+void *temp_reg_data;
+RegHeader read_register(FILE* file)
+{
+    RegHeader head;
+
+    fread(&(head.removed), sizeof(head.removed), 1, file);
+    fread(&(head.tam_reg), sizeof(head.tam_reg), 1, file);
+    fread(&(head.prox_reg), sizeof(head.prox_reg), 1, file);
+
+    int data_size = head.tam_reg - register_header_size;
+    
+    free(temp_reg_data);
+    temp_reg_data = malloc(data_size);
+    fread(temp_reg_data, data_size, 1, file);
+    head.data = temp_reg_data;
+
+    return head;
+}
+
+Table* read_table_header(FILE* file, Table* table)
+{
+    fseek(file, 0, SEEK_SET);
+
+    table->pos_reg = -1;
+
+    fread(&(table->status), sizeof(table->status), 1, file);
+    fread(&(table->top), sizeof(table->top), 1, file);
+    fread(&(table->next_byte_offset), sizeof(table->next_byte_offset), 1, file);
+    fread(&(table->num_reg), sizeof(table->num_reg), 1, file);
+    fread(&(table->num_removed), sizeof(table->num_removed), 1, file);
+
+    //table->current_register = read_register(file);
+
+    return table;
+}
+
+Table* table_access(char *path)
+{
+    FILE *file = fopen(path, "rb");
+
+    if (file == NULL)
+    {
+        return NULL;
+    }
+
+    Table* table = malloc(sizeof(Table));
+    table->f_pointer = file;
+    read_table_header(file, table);
+    return table;
+}
+
+#include <inttypes.h>
+bool table_move_to_next_register(Table* table)
+{
+    
+    if (table->pos_reg >= table->num_reg - 1)
+        return false;
+    
+    table->current_register = read_register(table->f_pointer);
+    if (table->current_register.removed == '1')
+        return table_move_to_next_register(table);
+
+    table->pos_reg += 1;
+    
+    return true;
+}
+
+// Table* table_get_next_register(TableHeader)
+// {
+
+// }
+
+// void *retrive_item(void *data, char* format, int position)
+// {
+
+// }
+
 
 void *format_data(const char *format, char **data)
 {
