@@ -134,7 +134,6 @@ Table* table_access(char *path)
     return table;
 }
 
-#include <inttypes.h>
 bool table_move_to_next_register(Table* table)
 {
     
@@ -150,16 +149,11 @@ bool table_move_to_next_register(Table* table)
     return true;
 }
 
-// Table* table_get_next_register(TableHeader)
-// {
-
-// }
-
-// void *retrive_item(void *data, char* format, int position)
-// {
-
-// }
-
+void table_reset_register_pointer(Table *table)
+{
+    fseek(table->f_pointer, table_header_size, SEEK_SET);
+    table->pos_reg = -1;
+}
 
 void *format_data(const char *format, char **data)
 {
