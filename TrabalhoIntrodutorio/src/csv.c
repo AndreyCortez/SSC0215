@@ -112,7 +112,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
                     header_complete = true;
                 }
 
-                
                 token = paxtok(NULL, ",");
             }
         }
@@ -135,7 +134,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     {
 
         token = paxtok(line, ",");
-        //printf("%s, ", token);
         char *prev_token_end = line;
         while (token != NULL)
         {
@@ -147,8 +145,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
                 *newline = '\0';
             }
 
-                
-            // Checa se o campo está vazio ou se possui dados
             if (prev_token_end == token && token != newline && strcmp(token, "") != 0)
             {
                 field_data = malloc((strlen(token) + 1) * sizeof(char));
@@ -158,12 +154,10 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
             {
                 field_data = malloc(2 * sizeof(char));
                 field_data = "$";
-                //printf("%s %d %d\n", field_data, current_row, current_collum);
             }
 
             csv_handler->data[current_row][current_collum] = field_data;
             
-            //printf("%s %d %d\n", csv_handler->data[current_row][current_collum], current_row, current_collum);
 
             current_collum += 1;
 
@@ -176,9 +170,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
 
             prev_token_end = token + strlen(token) + 1;
             token = paxtok(NULL, ",");
-
-            // 1 dado2.csv jogador.bin
-            
         }
     }
     return csv_handler;
@@ -223,7 +214,6 @@ char **csv_retrieve_collumn(CSV_handler *handler, char *collumn)
         char **result = (char **)malloc(handler->num_rows * sizeof(char *));
         for (int i = 0; i < handler->num_rows; i++)
         {
-            // printf("%s", handler->data[i][collumn_num]);
             char *res_str = handler->data[i][collumn_num];
             result[i] = malloc((strlen(res_str) + 1) * sizeof(char));
             strcpy(result[i], res_str);
@@ -272,3 +262,37 @@ CSV_handler *csv_retrieve_collumns(CSV_handler *handler, char **collumns, int qt
 
     return ret_handler;
 }
+
+void free_matrix(char ****matrix, int rows, int collumns)
+{
+    char ***mat = *matrix;
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < collumns; j++)
+        {
+            free(mat[i][j]);
+        }
+    }
+
+    *matrix = NULL;
+}
+
+void free_list(char ***collumn, int items)
+{
+    char **col = *(collumn);
+    for (int j = 0; j < items; j++)
+    {
+        free(col[j]);
+    }
+    *(collumn) = NULL;
+}
+
+void csv_free_handle(CSV_handler** handler)
+{
+    CSV_handler* hand = *(handler);
+    free_matrix((hand->data), hand->num_rows, hand->num_collumns);
+    free_list(&(hand->header), hand->num_collumns);
+    free(hand);
+    handler = NULL;
+}
+

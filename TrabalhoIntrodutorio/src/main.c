@@ -2,7 +2,7 @@
 #include "dbms.h"
 #include "funcoes_fornecidas.h"
 
-void print_formated_register_data(void *data)
+void printar_registro_formatado(void *data)
 {
     void *aux_data = data;
     aux_data += sizeof(int) * 2;
@@ -10,7 +10,6 @@ void print_formated_register_data(void *data)
     memcpy(&tam_nome, aux_data, sizeof(tam_nome));
     aux_data += sizeof(tam_nome);
 
-    // printf("tam_nome: %d\n", tam_nome);
     if (tam_nome != 0)
         printf("Nome do Jogador: %.*s\n", tam_nome, (char*)aux_data);
     else
@@ -53,16 +52,14 @@ void ler_string_entre_aspas(char *str) {
                 iterator += 1;
                 c = getchar();
             }
-            //printf("\n");
             str[iterator] = '\0'; 
 
-            //printf("entre aspas = '%s'\n", str);
             return;
         }   
     }
 }
 
-// main séria
+
 int main()
 {
     const char format[] = "%d %d %s %s %s";
@@ -112,7 +109,7 @@ int main()
         while (table_move_to_next_register(table))
         {
             void* current_data = table->current_register.data;
-            print_formated_register_data(current_data);
+            printar_registro_formatado(current_data);
             registers_read += 1;
         }
 
@@ -144,8 +141,6 @@ int main()
             int num_parametros;
             scanf("%d", &num_parametros);
 
-            //printf("%d\n", num_parametros);
-
             int parametros[5] = {-1, -1, -1, -1};
             char parametro_valor[5][100];
 
@@ -159,13 +154,11 @@ int main()
 
                 char parametro[20];
                 scanf("%s", parametro);
-                //printf("%s\n", parametro);
 
                 if (strcmp(parametro, parametro_id) == 0)
                 {
                     char valor_parametro[100];
                     scanf("%s", valor_parametro);
-                    //printf("%s\n", valor_parametro);
 
                     int val = atoi(valor_parametro);
                     parametros[j] = 0;
@@ -175,7 +168,6 @@ int main()
                 {
                     char valor_parametro[100];
                     scanf("%s", valor_parametro);
-                    //printf("%s\n", valor_parametro);
 
                     int val = atoi(valor_parametro);
                     parametros[j] = 1;
@@ -185,8 +177,6 @@ int main()
                 {
                     char valor_parametro[100];
                     ler_string_entre_aspas(valor_parametro);
-                    
-                    //printf("%s\n", valor_parametro);
 
                     parametros[j] = 2;
                     strcpy(parametro_valor[j], valor_parametro);
@@ -214,7 +204,6 @@ int main()
 
             while (table_move_to_next_register(table))
             {
-                //printf("oi\n");
                 int iterator = 0;
                 void* current_data = table->current_register.data;
 
@@ -288,7 +277,7 @@ int main()
 
                 if (valido)
                 {
-                    print_formated_register_data(current_data);
+                    printar_registro_formatado(current_data);
                     num_validos += 1;
                 }
             }
@@ -302,57 +291,3 @@ int main()
 
     return 0;
 }
-
-// 1 dado1.csv jogador.bin
-// 1 dado2.csv jogador.bin
-// 2 jogador.bin
-
-// main teste
-// int main()
-// {
-//     FILE *file = fopen("data/FIFA17_official_data.csv", "r");
-
-//     if (file == NULL)
-//     {
-//         perror("Erro ao abrir o arquivo");
-//         return 1;
-//     }
-
-//     // Chamar a função para analisar o CSV
-//     CSV_handler *hand = csv_parse(file, true);
-//     csv_print_head(hand);
-
-//     const char *collumns[] = {"Name", "Age", "Nationality", "Club"};
-//     const int num_collumns = 4;
-//     const char format[] = "%s %d %s %s";
-//     CSV_handler *new_hand = csv_retrieve_collumns(hand, collumns, num_collumns);
-
-//     int col = csv_find_collumn(hand, "Club");
-
-//     for (int i = 0; i < new_hand->num_rows; i++)
-//     {
-//         if (strcmp(new_hand->data[i][3], hand->data[i][col]) != 0)
-//         {
-//             printf("errado aqui\n");
-//             printf("%s\n", hand->data[i][col]);
-//         }
-//     }
-
-//     csv_print_head(new_hand);
-
-//     printf("%s %s %s %s\n", new_hand->data[0][0], new_hand->data[0][1], new_hand->data[0][2], new_hand->data[0][3]);
-//     int len = format_len(format, new_hand->data[0]);
-//     printf("%d\n", len);
-//     void *sla_man = format_data(format, new_hand->data[0]);
-//     print_bytes(sla_man, len);
-
-//     Table *new_table;
-//     new_table = table_create_from_csv(new_hand, "%s %d %s %s");
-
-//     table_save(new_table, "data.bin");
-
-//     // Fechar o arquivo
-//     fclose(file);
-
-//     return 0;
-// }
