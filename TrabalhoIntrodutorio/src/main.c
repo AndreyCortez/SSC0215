@@ -89,6 +89,8 @@ int main()
         table_save(new_table, bin_path);
         binarioNaTela(bin_path);
 
+        csv_free_handle(&hand);
+        table_free(&new_table); 
         fclose(file);
     }
     else if (command == 2)
@@ -104,7 +106,6 @@ int main()
             return 0;
         }
 
-
         int registers_read = 0;
         while (table_move_to_next_register(table))
         {
@@ -118,6 +119,7 @@ int main()
             printf("Registro inexistente.\n\n");
         }
 
+        table_free(&table);
     }
     else if (command == 3)
     {
@@ -286,6 +288,8 @@ int main()
             {
                 printf("Registro inexistente.\n\n");
             }
+
+            table_free(&table);
         }
     }
 

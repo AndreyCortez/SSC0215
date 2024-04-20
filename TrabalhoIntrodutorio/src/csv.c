@@ -1,13 +1,17 @@
 #include <csv.h>
 
-char *paxtok (char *str, char *seps) {
+char *paxtok(char *str, char *seps)
+{
     static char *tpos, *tkn, *pos = NULL;
     static char savech;
 
-    if (str != NULL) {
+    if (str != NULL)
+    {
         pos = str;
         savech = 'x';
-    } else {
+    }
+    else
+    {
         if (pos == NULL)
             return NULL;
         while (*pos != '\0')
@@ -19,8 +23,9 @@ char *paxtok (char *str, char *seps) {
         return NULL;
 
     tpos = pos;
-    while (*tpos != '\0') {
-        tkn = strchr (seps, *tpos);
+    while (*tpos != '\0')
+    {
+        tkn = strchr(seps, *tpos);
         if (tkn != NULL)
             break;
         tpos++;
@@ -67,7 +72,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     if (counter == 0)
         data_size -= 1;
 
-
     CSV_handler *csv_handler;
     csv_handler = malloc(sizeof(CSV_handler));
 
@@ -108,6 +112,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
 
                 if (newline)
                 {
+                    free(field_data);
                     fseek(file, 0, SEEK_SET);
                     header_complete = true;
                 }
@@ -139,7 +144,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
         {
             char *field_data;
             char *newline = strchr(token, '\n');
-            
+
             if (newline)
             {
                 *newline = '\0';
@@ -152,18 +157,16 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
             }
             else
             {
-                field_data = malloc(2 * sizeof(char));
                 field_data = "$";
             }
 
             csv_handler->data[current_row][current_collum] = field_data;
-            
 
             current_collum += 1;
 
             if (newline)
             {
-                
+                free(field_data);
                 current_row += 1;
                 current_collum = 0;
             }
@@ -265,34 +268,37 @@ CSV_handler *csv_retrieve_collumns(CSV_handler *handler, char **collumns, int qt
 
 void free_matrix(char ****matrix, int rows, int collumns)
 {
-    char ***mat = *matrix;
     for (int i = 0; i < rows; i++)
     {
         for (int j = 0; j < collumns; j++)
         {
-            free(mat[i][j]);
+            free((*matrix)[i][j]);
+            (*matrix)[i][j] = NULL;
         }
+        free((*matrix)[i]);
+        (*matrix)[i] = NULL;
     }
-
+    free((*matrix));
     *matrix = NULL;
 }
 
-void free_list(char ***collumn, int items)
+void free_char_list(char ***collumn, int items)
 {
-    char **col = *(collumn);
     for (int j = 0; j < items; j++)
     {
-        free(col[j]);
+        free((*collumn)[j]);
     }
-    *(collumn) = NULL;
+    free((*collumn));
+    *collumn = NULL;
 }
 
-void csv_free_handle(CSV_handler** handler)
+void csv_free_handle(CSV_handler **handler)
 {
-    CSV_handler* hand = *(handler);
-    free_matrix((hand->data), hand->num_rows, hand->num_collumns);
-    free_list(&(hand->header), hand->num_collumns);
-    free(hand);
-    handler = NULL;
-}
 
+    if ((*handler)->data != NULL)
+        free_matrix(&((*handler)->data), (*handler)->num_rows, (*handler)->num_collumns);
+    if ((*handler)->header != NULL)
+        free_char_list(&((*handler)->header), (*handler)->num_collumns);
+    free((*handler));
+    *handler = NULL;
+}

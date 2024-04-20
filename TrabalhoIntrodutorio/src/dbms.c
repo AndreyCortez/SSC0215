@@ -279,3 +279,33 @@ int format_len(const char *format, char **data)
 
     return size;
 }
+
+void free_void_list(void ***collumn, int items)
+{
+    void **col = *(collumn);
+    for (int j = 0; j < items; j++)
+    {
+        free(col[j]);
+    }
+    free(col);
+    *(collumn) = NULL;
+}
+
+void table_free(Table** tab)
+{
+    if ((*tab)->f_pointer)
+        fclose((*tab)->f_pointer);
+    if ((*tab)->register_headers)
+    {
+        for (int i = 0; i < (*tab)->num_reg; i++)
+        {
+            free((*tab)->register_headers);
+            (*tab)->register_headers = NULL;
+        }
+    }
+    if ((*tab)->data)
+        free_void_list(&((*tab)->data), (*tab)->data_size);
+    free(*tab);
+    (*tab) = NULL;
+}
+

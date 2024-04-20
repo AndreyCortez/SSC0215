@@ -25,7 +25,6 @@ typedef struct
     void **data;
     int data_size;
 
-
     char status;
     int64_t top;
     int64_t next_byte_offset;
@@ -35,21 +34,20 @@ typedef struct
     char *format;
     int num_fields;
     int field_types;
-    FILE* f_pointer;
+    FILE *f_pointer;
     RegHeader current_register;
     RegHeader *register_headers;
 } Table;
 
-
 Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns);
-Table *table_create_from_csv(CSV_handler* handler, char *format);
+Table *table_create_from_csv(CSV_handler *handler, char *format);
 
-void table_save(Table *table, char* path);
+void table_save(Table *table, char *path);
 
-
-Table* table_access(char *path);
-bool table_move_to_next_register(Table* table);
+Table *table_access(char *path);
+bool table_move_to_next_register(Table *table);
 void table_reset_register_pointer(Table *table);
+void table_free(Table **tab);
 // char table_seek(char);
 
 void *add_raw_item(Table *Table, void *raw_item);
