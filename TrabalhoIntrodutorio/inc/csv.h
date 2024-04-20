@@ -17,13 +17,19 @@ typedef struct
     char **header;
 } CSV_handler;
 
+// Abre o arquivo csv e salva seus dados em uma estrutura adequada para 
+// manipulação por código
 CSV_handler *csv_parse(FILE *file, bool has_header);
-char **csv_retrieve_collumn(CSV_handler *handler, char *collumn);
-CSV_handler *csv_retrieve_collumns(CSV_handler *handler, char **collumns, int qtd_collumns);
-void csv_free_handle(CSV_handler **handler);
-void csv_free_collum(char **collumn);
 
+// Libera a memoria usada pela estrutura quando a mesma não for mais
+// necessária
+void csv_free_handle(CSV_handler **handler);
+
+// Printa as primeiras 5 linhas do csv
+// util para debug
 void csv_print_head(CSV_handler *handler);
+
+// Acha o indice da coluna de tal nome
 int csv_find_collumn(CSV_handler *handler, char *header);
 
 #endif
