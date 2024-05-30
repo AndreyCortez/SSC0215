@@ -1,13 +1,19 @@
 #include <csv.h>
 
-char *paxtok (char *str, char *seps) {
+const char *null_field = "$";
+
+char *paxtok(char *str, char *seps)
+{
     static char *tpos, *tkn, *pos = NULL;
     static char savech;
 
-    if (str != NULL) {
+    if (str != NULL)
+    {
         pos = str;
         savech = 'x';
-    } else {
+    }
+    else
+    {
         if (pos == NULL)
             return NULL;
         while (*pos != '\0')
@@ -19,8 +25,9 @@ char *paxtok (char *str, char *seps) {
         return NULL;
 
     tpos = pos;
-    while (*tpos != '\0') {
-        tkn = strchr (seps, *tpos);
+    while (*tpos != '\0')
+    {
+        tkn = strchr(seps, *tpos);
         if (tkn != NULL)
             break;
         tpos++;
@@ -67,7 +74,6 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
     if (counter == 0)
         data_size -= 1;
 
-
     CSV_handler *csv_handler;
     csv_handler = malloc(sizeof(CSV_handler));
 
@@ -108,6 +114,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
 
                 if (newline)
                 {
+                    free(field_data);
                     fseek(file, 0, SEEK_SET);
                     header_complete = true;
                 }
@@ -139,7 +146,7 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
         {
             char *field_data;
             char *newline = strchr(token, '\n');
-            
+
             if (newline)
             {
                 *newline = '\0';
@@ -152,18 +159,16 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
             }
             else
             {
-                field_data = malloc(2 * sizeof(char));
-                field_data = "$";
+                field_data = malloc(2);
+                strcpy(field_data, null_field);
             }
 
             csv_handler->data[current_row][current_collum] = field_data;
-            
 
             current_collum += 1;
 
             if (newline)
             {
-                
                 current_row += 1;
                 current_collum = 0;
             }
@@ -205,94 +210,42 @@ int csv_find_collumn(CSV_handler *handler, char *header)
     return -1;
 }
 
-char **csv_retrieve_collumn(CSV_handler *handler, char *collumn)
-{
-    int collumn_num = csv_find_collumn(handler, collumn);
-
-    if (collumn_num != -1)
-    {
-        char **result = (char **)malloc(handler->num_rows * sizeof(char *));
-        for (int i = 0; i < handler->num_rows; i++)
-        {
-            char *res_str = handler->data[i][collumn_num];
-            result[i] = malloc((strlen(res_str) + 1) * sizeof(char));
-            strcpy(result[i], res_str);
-        }
-        return result;
-    }
-    else
-    {
-        return NULL;
-    }
-}
-
-CSV_handler *csv_retrieve_collumns(CSV_handler *handler, char **collumns, int qtd_collumns)
-{
-    for (int i = 0; i < qtd_collumns; i++)
-    {
-        if (csv_find_collumn(handler, collumns[i]) == -1)
-            return NULL;
-    }
-
-    CSV_handler *ret_handler;
-    ret_handler = malloc(sizeof(CSV_handler));
-
-    ret_handler->num_rows = handler->num_rows;
-    ret_handler->num_collumns = qtd_collumns;
-    ret_handler->data = malloc(ret_handler->num_rows * sizeof(char **));
-    ret_handler->header = malloc((qtd_collumns * sizeof(char *)));
-
-    for (int i = 0; i < ret_handler->num_rows; i++)
-    {
-        ret_handler->data[i] = malloc(ret_handler->num_collumns * sizeof(char *));
-    }
-
-    for (int i = 0; i < qtd_collumns; i++)
-    {
-        ret_handler->header[i] = malloc((strlen(collumns[i]) + 1) * sizeof(char));
-        strcpy(ret_handler->header[i], collumns[i]);
-
-        char **aux_data = csv_retrieve_collumn(handler, collumns[i]);
-
-        for (int j = 0; j < ret_handler->num_rows; j++)
-            ret_handler->data[j][i] = aux_data[j];
-
-        free(aux_data);
-    }
-
-    return ret_handler;
-}
-
 void free_matrix(char ****matrix, int rows, int collumns)
 {
-    char ***mat = *matrix;
     for (int i = 0; i < rows; i++)
     {
         for (int j = 0; j < collumns; j++)
         {
-            free(mat[i][j]);
+            if ((*matrix)[i][j] != null_field)
+            {
+                free((*matrix)[i][j]);
+                (*matrix)[i][j] = NULL;
+            }
         }
+        free((*matrix)[i]);
+        (*matrix)[i] = NULL;
     }
-
+    free((*matrix));
     *matrix = NULL;
 }
 
-void free_list(char ***collumn, int items)
+void free_char_list(char ***collumn, int items)
 {
-    char **col = *(collumn);
     for (int j = 0; j < items; j++)
     {
-        free(col[j]);
+        free((*collumn)[j]);
     }
-    *(collumn) = NULL;
+    free((*collumn));
+    *collumn = NULL;
 }
 
-void csv_free_handle(CSV_handler** handler)
+void csv_free_handle(CSV_handler **handler)
 {
-    CSV_handler* hand = *(handler);
-    free_matrix((hand->data), hand->num_rows, hand->num_collumns);
-    free_list(&(hand->header), hand->num_collumns);
-    free(hand);
-    handler = NULL;
-}
 
+    if ((*handler)->data != NULL)
+        free_matrix(&((*handler)->data), (*handler)->num_rows, (*handler)->num_collumns);
+    if ((*handler)->header != NULL)
+        free_char_list(&((*handler)->header), (*handler)->num_collumns);
+    free((*handler));
+    *handler = NULL;
+}

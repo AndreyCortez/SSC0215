@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -Iinc
 SRC_DIR = src
 INC_DIR = inc
 BIN_DIR = bin
-TARGET = myprogram
+TARGET = programaTrab
 
 # Lista de arquivos fonte
 SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
@@ -24,6 +24,9 @@ $(TARGET): $(OBJ_FILES)
 # Executar o programa
 run:
 	./$(TARGET)
+
+check_memory:
+	valgrind --leak-check=full ./programaTrab
 
 # Limpar os arquivos objeto e o executável
 clean:
