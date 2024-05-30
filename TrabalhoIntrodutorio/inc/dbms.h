@@ -50,7 +50,6 @@ void table_save(Table *table, char* path);
 Table* table_access(char *path);
 bool table_move_to_next_register(Table* table);
 void table_reset_register_pointer(Table *table);
-// char table_seek(char);
 
 void *add_raw_item(Table *Table, void *raw_item);
 void *format_data(const char *format, char **data);
