@@ -18,8 +18,17 @@ typedef struct
     char removed;
     int32_t tam_reg;
     int64_t prox_reg;
+    int64_t byte_offset;
     void *data;
 } Register;
+
+// Estrutura que guarda dados do index
+typedef struct
+{
+    void** key;
+    int64_t* byte_offset;
+    int key_size;
+} Index;
 
 // Estrutura que guardad dados da tabela
 typedef struct
@@ -27,7 +36,6 @@ typedef struct
     void **data;
     int data_size;
 
-    char status;
     int64_t top;
     int64_t next_byte_offset;
     int32_t num_reg;
@@ -39,7 +47,11 @@ typedef struct
     FILE *f_pointer;
     Register current_register;
     Register *register_headers;
+
+    Index index;
 } Table;
+
+
 
 // Função para criar uma tabela a partir de dados especificos
 Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns);
@@ -58,8 +70,20 @@ Table *table_access(char *path);
 bool table_move_to_next_register(Table *table);
 // Move o ponteiro de registro da tabela para o primeiro registro
 void table_reset_register_pointer(Table *table);
+
+bool table_delete_current_register(Table *table);
+
+bool table_search_for_matches(Table *table, void** data, int* indexes, int num_parameters);
+
 // Libera a memoria utilizada pela tabela
 void table_free(Table **tab);
+
+bool table_create_index(Table *table, char* path, int key_row, int key_size);
+bool table_load_index(Table *table, char* path);
+bool table_search_using_index(Table *tab, void* key);
+bool table_delete_using_index(Table *tab, void* key);
+
+
 
 // Funções auxiliares para a criação da tabela
 void *format_data(const char *format, char **data);
