@@ -65,11 +65,64 @@ void ler_string_entre_aspas(char *str)
     }
 }
 
+
+void decodificar_parametros(int* index_parametros, char** vlr_parametros, int num_parametros)
+{
+    for (int j = 0; j < num_parametros; j++)
+    {
+        char parametro[20];
+        scanf("%s", parametro);
+
+        if (strcmp(parametro, "id") == 0)
+        {
+            char valor_parametro[100];
+            scanf("%s", valor_parametro);
+
+            int val = atoi(valor_parametro);
+            index_parametros[j] = 0;
+            memcpy(vlr_parametros[j], &val, sizeof(val));
+        }
+        else if (strcmp(parametro, "idade") == 0)
+        {
+            char valor_parametro[100];
+            scanf("%s", valor_parametro);
+
+            int val = atoi(valor_parametro);
+            index_parametros[j] = 1;
+            memcpy(vlr_parametros[j], &val, sizeof(val));
+        }
+        else if (strcmp(parametro, "nomeJogador") == 0)
+        {
+            char valor_parametro[100];
+            ler_string_entre_aspas(valor_parametro);
+
+            index_parametros[j] = 2;
+            strcpy(vlr_parametros[j], valor_parametro);
+        }
+        else if (strcmp(parametro, "nomeClube") == 0)
+        {
+            char valor_parametro[100];
+            ler_string_entre_aspas(valor_parametro);
+
+            index_parametros[j] = 4;
+            strcpy(vlr_parametros[j], valor_parametro);
+        }
+        else if (strcmp(parametro, "nacionalidade") == 0)
+        {
+            char valor_parametro[100];
+            ler_string_entre_aspas(valor_parametro);
+
+            index_parametros[j] = 3;
+            strcpy(vlr_parametros[j], valor_parametro);
+        }
+    }
+}
+
 // função principal do programa
 int main()
 {
     // formato dos itens no csv 
-    const char format[] = "%d %d %s %s %s";
+    char format[] = "%d %d %s %s %s";
 
     // comando a ser executado
     int command;
@@ -99,8 +152,8 @@ int main()
         table_save(new_table, bin_path);
         binarioNaTela(bin_path);
 
-        csv_free_handle(&hand);
-        table_free(&new_table);
+        //csv_free_handle(&hand);
+        //table_free(&new_table);
         fclose(file);
     }
     // Segundo comando, imprime os dados de um binário
@@ -131,7 +184,7 @@ int main()
             printf("Registro inexistente.\n\n");
         }
 
-        table_free(&table);
+        //table_free(&table);
     }
     // Comando de busca
     // entrada primaria: caminho do binario, numero de entradas secundarias
@@ -152,83 +205,31 @@ int main()
 
         for (int i = 0; i < qtd_buscas; i++)
         {
-            table_reset_register_pointer(table);
             printf("Busca %d\n\n", i + 1);
 
             int num_parametros;
             scanf("%d", &num_parametros);
 
             int parametros[5] = {-1, -1, -1, -1, -1};
-            char parametro_valor[5][100];
+            char valor_parametros[5][100];
 
-            for (int j = 0; j < num_parametros; j++)
-            {
-                char parametro[20];
-                scanf("%s", parametro);
+            decodificar_parametros((int*)parametros, (char**)valor_parametros, num_parametros);
 
-                if (strcmp(parametro, "id") == 0)
-                {
-                    char valor_parametro[100];
-                    scanf("%s", valor_parametro);
+            int num_validos = 0;
 
-                    parametros[j] = 0;
-                    break;
-                }
-                else if (strcmp(parametro, "idade") == 0)
-                {
-                    char valor_parametro[100];
-                    scanf("%s", valor_parametro);
-
-                    int val = atoi(valor_parametro);
-                    parametros[j] = 1;
-                    memcpy(parametro_valor[j], &val, sizeof(val));
-                }
-                else if (strcmp(parametro, "nomeJogador") == 0)
-                {
-                    char valor_parametro[100];
-                    ler_string_entre_aspas(valor_parametro);
-
-                    parametros[j] = 2;
-                    strcpy(parametro_valor[j], valor_parametro);
-                }
-                else if (strcmp(parametro, "nomeClube") == 0)
-                {
-                    char valor_parametro[100];
-                    ler_string_entre_aspas(valor_parametro);
-
-                    parametros[j] = 3;
-                    strcpy(parametro_valor[j], valor_parametro);
-                }
-                else if (strcmp(parametro, "nacionalidade") == 0)
-                {
-                    char valor_parametro[100];
-                    ler_string_entre_aspas(valor_parametro);
-
-                    parametros[j] = 4;
-                    strcpy(parametro_valor[j], valor_parametro);
-                }
-            }
-
-            while (table_search_for_matches(table, (void**) parametro_valor, parametros, num_parametros))
+            while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
             {
                 printar_registro_formatado(table->current_register.data);
+                num_validos++;
             }
-            
 
-
-        }
-            
-            
-
-        if (num_validos == 0)
-        {
-            printf("Registro inexistente.\n\n");
+            if (num_validos == 0)
+            {
+                printf("Registro inexistente.\n\n");
+            }
         }
 
-            
-    }
-
-        table_free(&table);
+        //table_free(&table);
     }
     else if (command == 4)
     {

@@ -30,7 +30,7 @@ typedef struct
     int key_size;
 } Index;
 
-// Estrutura que guardad dados da tabela
+// Estrutura que guarda dados da tabela
 typedef struct
 {
     void **data;
@@ -49,6 +49,7 @@ typedef struct
     Register *register_headers;
 
     Index index;
+    bool has_index;
 } Table;
 
 
@@ -64,7 +65,7 @@ void table_save(Table *table, char *path);
 
 // Acessa a tabela na memória
 // NOTA: não carrega o campo data
-Table *table_access(char *path);
+Table *table_access(char *path, char* format);
 
 // Move o ponteiro de registro da tabela para o proximo registro
 bool table_move_to_next_register(Table *table);
@@ -82,11 +83,5 @@ bool table_create_index(Table *table, char* path, int key_row, int key_size);
 bool table_load_index(Table *table, char* path);
 bool table_search_using_index(Table *tab, void* key);
 bool table_delete_using_index(Table *tab, void* key);
-
-
-
-// Funções auxiliares para a criação da tabela
-void *format_data(const char *format, char **data);
-int format_len(const char *format, char **data);
 
 #endif
