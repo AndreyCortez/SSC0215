@@ -48,12 +48,21 @@ Table *table_create_from_csv(CSV_handler *handler, char *format)
     return table_create(handler->data, format, handler->num_rows, handler->num_collumns);
 }
 
-void write_table_header(FILE *arquivo, Table *tabhead)
+void write_table_header(Table *table, char set)
 {
-    fwrite(&(tabhead->top), sizeof(tabhead->top), 1, arquivo);
-    fwrite(&(tabhead->next_byte_offset), sizeof(tabhead->next_byte_offset), 1, arquivo);
-    fwrite(&(tabhead->num_reg), sizeof(tabhead->num_reg), 1, arquivo);
-    fwrite(&(tabhead->num_removed), sizeof(tabhead->num_removed), 1, arquivo);
+    FILE *arquivo = table->f_pointer;
+
+    int64_t ini_offset = ftell(arquivo);
+    //printf("%d\n", ini_offset);
+    fseek(arquivo, 0, SEEK_SET);
+
+    fwrite(&set, sizeof(char), 1, arquivo);
+    fwrite(&(table->top), sizeof(table->top), 1, arquivo);
+    fwrite(&(table->next_byte_offset), sizeof(table->next_byte_offset), 1, arquivo);
+    fwrite(&(table->num_reg), sizeof(table->num_reg), 1, arquivo);
+    fwrite(&(table->num_removed), sizeof(table->num_removed), 1, arquivo);
+
+    fseek(arquivo, ini_offset, SEEK_SET);
 }
 
 void write_register_header(FILE *arquivo, Register reghead)
@@ -67,7 +76,7 @@ void table_save(Table *table, char *path)
 {
     FILE *arquivo;
 
-    arquivo = fopen(path, "wb");
+    arquivo = fopen(path, "r_b");
 
     if (arquivo == NULL)
     {
@@ -75,8 +84,8 @@ void table_save(Table *table, char *path)
         return;
     }
 
-    fwrite("0", sizeof(char), 1, arquivo);
-    write_table_header(arquivo, table);
+    table->f_pointer = arquivo;
+    write_table_header(table, '0');
 
     for (int i = 0; i < table->data_size; i++)
     {
@@ -85,8 +94,9 @@ void table_save(Table *table, char *path)
         fwrite((table->data[i]), sizeof(char), (reghead.tam_reg - register_header_size), arquivo);
     }
 
-    fseek(arquivo, 0, SEEK_SET);
-    fwrite("1", sizeof(char), 1, arquivo);
+    write_table_header(table, '1');
+    fseek(arquivo, table_header_size, SEEK_SET);
+
     fclose(arquivo);
 }
 
@@ -98,6 +108,7 @@ Register read_register(FILE *file)
     reg.byte_offset = ftell(file);
     fread(&(reg.removed), sizeof(reg.removed), 1, file);
     fread(&(reg.tam_reg), sizeof(reg.tam_reg), 1, file);
+    //printf("%d\n", reg.tam_reg);
     fread(&(reg.prox_reg), sizeof(reg.prox_reg), 1, file);
 
     int data_size = reg.tam_reg - register_header_size;
@@ -165,6 +176,23 @@ bool table_move_to_next_register(Table *table)
         return table_move_to_next_register(table);
     }
     table->pos_reg += 1;
+
+    return true;
+}
+
+bool table_move_to_previous_register(Table *table)
+{
+    if (table->pos_reg <= 0)
+        return false;
+
+    fseek(table->f_pointer, - table->current_register.tam_reg, SEEK_CUR);
+    table->current_register = read_register(table->f_pointer);
+
+    if (table->current_register.removed == '1')
+    {
+        return table_move_to_previous_register(table);
+    }
+    table->pos_reg -= 1;
 
     return true;
 }
@@ -318,11 +346,12 @@ void *table_get_current_register_data_by_index(Table *table, int index)
     return NULL;
 }
 
-bool search_state = 0;
+int search_state = 0;
 bool table_search_for_matches(Table *table, void **data, int *indexes, int num_parameters)
 {
     if (search_state == 0)
     {
+        table_reset_register_pointer(table);
         for (int i = 0; i < num_parameters; i++)
             if (indexes[i] == 0 && table->has_index)
             {
@@ -333,10 +362,10 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
             }
 
         search_state = 2;
-        table_reset_register_pointer(table);
     }
     else if (search_state == 1)
     {
+        //printf("passou aqui?\n");
         return false;
     }
     while (table_move_to_next_register(table))
@@ -351,7 +380,7 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
 
             if (table->format[indexes[i]] == 's')
             {
-                // printf("a:%s| b:%s|\n", value, data_temp);
+                //printf("a:%s| b:%s|\n", value, data_temp);
                 if (strcmp(data_temp, value) != 0)
                 {
                     match = false;
@@ -360,7 +389,7 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
             }
             else if (table->format[indexes[i]] == 'd')
             {
-                // printf("a:%d b:%d\n", *(int32_t*)value, *(int32_t*)data[i]);
+                //printf("a:%d b:%d\n", *(int32_t*)value, *(int32_t*)data[i]);
                 if (*(int32_t *)data[i] != *(int32_t *)value)
                 {
                     match = false;
@@ -376,6 +405,7 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
     }
 
     search_state = 0;
+    //printf("passou aqyu efgbaseyuz\n");
 
     return false;
 }
@@ -498,17 +528,54 @@ bool table_load_index(Table *table, char *path)
     return true;
 }
 
-
-bool table_delete_current_register(Table *table)
+bool rewrite_current_register(Table* table)
 {
-    printf("%d\n", table->current_register.tam_reg);
-    fseek(table->f_pointer, -table->current_register.tam_reg, SEEK_CUR);
-    fwrite("0", sizeof(char), 1, table->f_pointer);
-    fseek(table->f_pointer, -1, SEEK_CUR);
-    table_move_to_next_register(table);
+    fseek(table->f_pointer, - table->current_register.tam_reg, SEEK_CUR);
+    write_register_header(table->f_pointer, table->current_register);
+    fseek(table->f_pointer, -register_header_size, SEEK_CUR);
 
     return true;
 }
+
+
+bool propagate_byte_offset(Table* table, int byte_offset)
+{
+    char a;
+    uint64_t b;
+    fseek(table->f_pointer, table->top + 5, SEEK_SET);
+    fread(&b, 1, 8, table->f_pointer);
+    while(b != -1)
+    {
+        if (b > byte_offset)
+        {
+            fseek   
+        }
+    }
+}
+
+bool table_delete_current_register(Table *table)
+{
+
+    write_table_header(table, '0');
+
+    table->current_register.removed = '1';
+    if (table->top > table->current_register.byte_offset)
+        table->top = table->current_register.byte_offset;
+    else
+        propagate_byte_offset(table, table->current_register.byte_offset);
+    table->top = table->current_register.prox_reg;
+    table->num_removed += 1;
+    table->num_reg -= 1;
+    
+    // printf("%d\n", table->current_register.tam_reg);
+
+
+    rewrite_current_register(table);
+    write_table_header(table, '1');
+
+    return true;
+}
+
 
 bool table_search_using_index(Table *table, void *key)
 {

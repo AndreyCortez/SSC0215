@@ -69,8 +69,11 @@ void ler_string_entre_aspas(char *str)
 void decodificar_parametros(int** index_parametros, char*** vlr_parametros, int num_parametros)
 {
     *index_parametros = malloc(sizeof(int) * num_parametros);
+    memset(*index_parametros, -1, num_parametros);
 
     *vlr_parametros = malloc(sizeof(char*) * num_parametros);
+
+
     for (int i = 0; i < num_parametros; i++)
     {
         (*vlr_parametros)[i] = malloc(sizeof(char) * 100);
@@ -281,8 +284,6 @@ int main()
 
         for (int i = 0; i < qtd_buscas; i++)
         {
-            printf("Busca %d\n\n", i + 1);
-
             int num_parametros;
             scanf("%d", &num_parametros);
 
@@ -291,25 +292,19 @@ int main()
 
             decodificar_parametros(&parametros, &valor_parametros, num_parametros);
 
-            int num_validos = 0;
-
             while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
             {
-                table_delete_current_register(table->current_register.data);
-                num_validos++;
-            }
-
-            if (num_validos == 0)
-            {
-                printf("Registro inexistente.\n\n");
+                //printf("oi\n");
+                printar_registro_formatado(table->current_register.data);
+                table_delete_current_register(table);
             }
 
             table_create_index(table, index_bin_path, 0, 4);
             table_load_index(table, index_bin_path);
 
-            binarioNaTela(bin_path);
-            binarioNaTela(index_bin_path);
         }
+        binarioNaTela(bin_path);
+        binarioNaTela(index_bin_path);
     }
 
     return 0;
