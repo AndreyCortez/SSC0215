@@ -105,7 +105,10 @@ void decodificar_parametros(int* index_parametros, char** vlr_parametros, int nu
             ler_string_entre_aspas(valor_parametro);
 
             index_parametros[j] = 4;
+            printf("%s\n", valor_parametro);
+            printf("%d\n", j);
             strcpy(vlr_parametros[j], valor_parametro);
+            printf("oi\n");
         }
         else if (strcmp(parametro, "nacionalidade") == 0)
         {
@@ -213,8 +216,8 @@ int main()
             int parametros[5] = {-1, -1, -1, -1, -1};
             char valor_parametros[5][100];
 
-            decodificar_parametros((int*)parametros, (char**)valor_parametros, num_parametros);
-
+            decodificar_parametros(parametros, valor_parametros, num_parametros);
+            printf("oi\n");
             int num_validos = 0;
 
             while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
@@ -254,7 +257,43 @@ int main()
     }
     else if(command == 5)
     {
+        char bin_path[100];
+        int qtd_buscas;
 
+        scanf("%s %d", bin_path, &qtd_buscas);
+        Table *table = table_access(bin_path, format);
+
+        if (table == NULL)
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return 0;
+        }
+
+        for (int i = 0; i < qtd_buscas; i++)
+        {
+            printf("Busca %d\n\n", i + 1);
+
+            int num_parametros;
+            scanf("%d", &num_parametros);
+
+            int parametros[5] = {-1, -1, -1, -1, -1};
+            char valor_parametros[5][100];
+
+            decodificar_parametros((int *)parametros, (char **)valor_parametros, num_parametros);
+
+            int num_validos = 0;
+
+            while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
+            {
+                printar_registro_formatado(table->current_register.data);
+                num_validos++;
+            }
+
+            if (num_validos == 0)
+            {
+                printf("Registro inexistente.\n\n");
+            }
+        }
     }
 
     return 0;
