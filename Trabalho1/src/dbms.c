@@ -3,8 +3,7 @@
 // Funções auxiliares para a criação da tabela
 void *format_data(char *format, char **data);
 int format_len(char *format, char **data);
-char *decode_format(char* format);
-
+char *decode_format(char *format);
 
 Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns)
 {
@@ -20,11 +19,10 @@ Table *table_create(char ***raw_data, char *format, int num_rows, int num_collum
 
     for (int i = 0; i < num_rows; i++)
     {
-        //printf("%s\n", table->format);
+        // printf("%s\n", table->format);
         table->data[i] = format_data(table->format, raw_data[i]);
-        
 
-        //printf("oi\n");
+        // printf("oi\n");
         Register reg_header;
         reg_header.removed = '0';
         reg_header.tam_reg = format_len(table->format, raw_data[i]) + register_header_size;
@@ -118,7 +116,7 @@ Table *read_table_header(FILE *file, Table *table)
 
     table->pos_reg = -1;
     char status = '1';
-    
+
     fread(&status, sizeof(char), 1, file);
     if (status == '0')
         return NULL;
@@ -131,9 +129,9 @@ Table *read_table_header(FILE *file, Table *table)
     return table;
 }
 
-Table *table_access(char *path, char* format)
+Table *table_access(char *path, char *format)
 {
-    FILE *file = fopen(path, "rb");
+    FILE *file = fopen(path, "r+b");
 
     if (file == NULL)
     {
@@ -143,7 +141,7 @@ Table *table_access(char *path, char* format)
     Table *table = malloc(sizeof(Table));
     table->f_pointer = file;
     table->format = decode_format(format);
-    //printf("%s", table->format);
+    // printf("%s", table->format);
     if (!read_table_header(file, table))
     {
         return NULL;
@@ -175,15 +173,16 @@ void table_reset_register_pointer(Table *table)
     table->pos_reg = -1;
 }
 
-char *decode_format(char* format)
+char *decode_format(char *format)
 {
     int tamanho = strlen(format);
-    char* tipos = (char*)malloc(tamanho * sizeof(char));
+    char *tipos = (char *)malloc(tamanho * sizeof(char));
     int contador = 0;
 
-
-    for (int i = 0; i < tamanho; i++) {
-        if (format[i] == '%' && i < tamanho - 1) {
+    for (int i = 0; i < tamanho; i++)
+    {
+        if (format[i] == '%' && i < tamanho - 1)
+        {
             tipos[contador] = format[i + 1];
             contador++;
         }
@@ -196,7 +195,7 @@ char *decode_format(char* format)
 void *format_data(char *format, char **data)
 {
     void *formated_data;
-    //printf("%d\n", format_len(format, data));
+    // printf("%d\n", format_len(format, data));
 
     formated_data = (void *)calloc(format_len(format, data) + 1, sizeof(void *));
     char *aux_ptr = format;
@@ -211,7 +210,7 @@ void *format_data(char *format, char **data)
             memcpy(formated_data + size_ptr, (void *)(&value), 4);
 
             counter += 1;
-            size_ptr += 4 ;
+            size_ptr += 4;
         }
         else if (*aux_ptr == 's')
         {
@@ -223,7 +222,7 @@ void *format_data(char *format, char **data)
                 continue;
             }
 
-            int str_size = strlen(data[counter]); 
+            int str_size = strlen(data[counter]);
             memcpy(formated_data + size_ptr, &str_size, 4);
             memcpy(formated_data + size_ptr + 4, data[counter], str_size);
 
@@ -236,7 +235,6 @@ void *format_data(char *format, char **data)
     return formated_data;
 }
 
-
 int format_len(char *format, char **data)
 {
     int size = 0;
@@ -245,7 +243,7 @@ int format_len(char *format, char **data)
 
     while (*aux_ptr != '\0')
     {
-        //printf("%c\n", *aux_ptr);
+        // printf("%c\n", *aux_ptr);
         if (*aux_ptr == 'd')
         {
             size += 4;
@@ -260,8 +258,8 @@ int format_len(char *format, char **data)
                 aux_ptr++;
                 continue;
             }
-            //printf("%s\n", data[counter]);
-            //printf("%d\n", strlen(data[counter]));
+            // printf("%s\n", data[counter]);
+            // printf("%d\n", strlen(data[counter]));
             size += strlen(data[counter]) + 4;
             counter += 1;
         }
@@ -272,18 +270,18 @@ int format_len(char *format, char **data)
     return size;
 }
 
-void *table_get_current_register_data_by_index(Table * table, int index)
+void *table_get_current_register_data_by_index(Table *table, int index)
 {
     int size = 0;
     char *aux_ptr = table->format;
-    //printf("%s\n", table->format);
+    // printf("%s\n", table->format);
     int counter = 0;
 
     void *ret_val;
 
     while (*aux_ptr != '\0')
     {
-        //printf("%c\n", *aux_ptr);
+        // printf("%c\n", *aux_ptr);
         if (*aux_ptr == 'd')
         {
             if (counter == index)
@@ -298,18 +296,18 @@ void *table_get_current_register_data_by_index(Table * table, int index)
         }
         else if (*aux_ptr == 's')
         {
-            
+
             void *data = table->current_register.data + size;
-            //printf("%d\n", *((int32_t*)(data)));
+            // printf("%d\n", *((int32_t*)(data)));
 
             if (counter == index)
             {
-                ret_val = calloc(*((int32_t*)(data)) + 1, 1);
-                memcpy(ret_val, data + 4, *((int32_t*)(data)));
+                ret_val = calloc(*((int32_t *)(data)) + 1, 1);
+                memcpy(ret_val, data + 4, *((int32_t *)(data)));
                 return ret_val;
             }
 
-            size += *((int32_t*)data) + 4;
+            size += *((int32_t *)data) + 4;
         }
         counter++;
         aux_ptr++;
@@ -318,15 +316,15 @@ void *table_get_current_register_data_by_index(Table * table, int index)
     return NULL;
 }
 
-
 bool search_state = 0;
-bool table_search_for_matches(Table *table, void** data, int* indexes, int num_parameters)
+bool table_search_for_matches(Table *table, void **data, int *indexes, int num_parameters)
 {
     if (search_state == 0)
     {
         for (int i = 0; i < num_parameters; i++)
             if (indexes[i] == 0 && table->has_index)
             {
+                printf("oi\n");
                 bool sr = table_search_using_index(table, data[i]);
                 if (sr)
                     search_state = 1;
@@ -346,13 +344,13 @@ bool table_search_for_matches(Table *table, void** data, int* indexes, int num_p
 
         for (int i = 0; i < num_parameters; i++)
         {
-            void *v =  table_get_current_register_data_by_index(table, indexes[i]);
+            void *v = table_get_current_register_data_by_index(table, indexes[i]);
             void *value = v;
             void *data_temp = data[i];
-            
+
             if (table->format[indexes[i]] == 's')
             {
-                //printf("a:%s| b:%s|\n", value, data_temp);
+                // printf("a:%s| b:%s|\n", value, data_temp);
                 if (strcmp(data_temp, value) != 0)
                 {
                     match = false;
@@ -361,8 +359,8 @@ bool table_search_for_matches(Table *table, void** data, int* indexes, int num_p
             }
             else if (table->format[indexes[i]] == 'd')
             {
-                //printf("a:%d b:%d\n", *(int32_t*)value, *(int32_t*)data[i]);
-                if (*(int32_t*)data[i] != *(int32_t*)value)
+                // printf("a:%d b:%d\n", *(int32_t*)value, *(int32_t*)data[i]);
+                if (*(int32_t *)data[i] != *(int32_t *)value)
                 {
                     match = false;
                     break;
@@ -373,12 +371,11 @@ bool table_search_for_matches(Table *table, void** data, int* indexes, int num_p
         }
 
         if (match)
-            return true; 
+            return true;
     }
 
     search_state = 0;
-    
-        
+
     return false;
 }
 
@@ -411,7 +408,7 @@ void table_free(Table **tab)
     (*tab) = NULL;
 }
 
-bool table_create_index(Table *table, char* path, int key_row, int key_size)
+bool table_create_index(Table *table, char *path, int key_row, int key_size)
 {
     FILE *arquivo;
     arquivo = fopen(path, "wb");
@@ -427,7 +424,8 @@ bool table_create_index(Table *table, char* path, int key_row, int key_size)
 
     while (table_move_to_next_register(table))
     {
-        //printf("%d\n", *((int*)table->current_register.data));
+        // printf("oi\n");
+        // printf("%d\n", *((int*)table->current_register.data));
         fwrite(table->current_register.data + key_row * sizeof(char), sizeof(char), key_size, arquivo);
         fwrite(&(table->current_register.byte_offset), sizeof(table->current_register.byte_offset), 1, arquivo);
     }
@@ -441,10 +439,10 @@ bool table_create_index(Table *table, char* path, int key_row, int key_size)
     return true;
 }
 
-bool table_load_index(Table *table, char*  path)
+bool table_load_index(Table *table, char *path)
 {
     FILE *arquivo;
-    arquivo = fopen(path, "wb");
+    arquivo = fopen(path, "r+b");
 
     if (arquivo == NULL)
     {
@@ -454,10 +452,26 @@ bool table_load_index(Table *table, char*  path)
 
     fwrite("0", sizeof(char), 1, arquivo);
 
+    if (table->index.key != NULL)
+    {
+        free(table->index.key);
+        table->index.key = NULL;
+    }
+
+    if (table->index.byte_offset != NULL)
+    {
+        free(table->index.byte_offset);
+        table->index.byte_offset = NULL;
+    }
+
+    table->index.key = malloc(sizeof(int32_t) * table->num_reg);
+    table->index.byte_offset = malloc(sizeof(int64_t) * table->num_reg);
+
     for (int i = 0; i < table->num_reg; i++)
     {
-        fread((table->index.key[i]) , sizeof(char), table->index.key_size, arquivo);
-        fread(&(table->index.byte_offset[i]), sizeof(char), table->index.key_size, arquivo);
+        //printf("%d\n", i);
+        fread(&(table->index.key[i]), sizeof(char), 4, arquivo);
+        fread(&(table->index.byte_offset[i]), sizeof(char), 8, arquivo);
     }
 
     fseek(arquivo, 0, SEEK_SET);
@@ -468,8 +482,7 @@ bool table_load_index(Table *table, char*  path)
     return true;
 }
 
-
-bool align_current_register_fpointer(Table* table)
+bool align_current_register_fpointer(Table *table)
 {
     fseek(table->f_pointer, ftell(table->f_pointer) - table->current_register.tam_reg, SEEK_SET);
     return true;
@@ -485,11 +498,20 @@ bool table_delete_current_register(Table *table)
     return true;
 }
 
-
-bool table_search_using_index(Table *tab, void* key)
+bool table_search_using_index(Table *table, void *key)
 {
-    tab++;
-    key++;
+    for (int i = 0; i < table->num_reg; i++)
+    {
+        printf("oi\n");
+        printf("%d %d\n", *((int32_t*)(table->index.key[i])), *((int32_t*)key));
+        if (table->index.key[i] == key)
+        {
+            fseek(table->f_pointer, table->index.byte_offset[i], SEEK_SET);
+            return table_move_to_next_register(table);
+        }
+    }
+
     return false;
 }
+
 // bool table_delete_using_index(Table *tab, void* key);

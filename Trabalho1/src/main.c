@@ -66,8 +66,16 @@ void ler_string_entre_aspas(char *str)
 }
 
 
-void decodificar_parametros(int* index_parametros, char** vlr_parametros, int num_parametros)
+void decodificar_parametros(int** index_parametros, char*** vlr_parametros, int num_parametros)
 {
+    *index_parametros = malloc(sizeof(int) * num_parametros);
+
+    *vlr_parametros = malloc(sizeof(char*) * num_parametros);
+    for (int i = 0; i < num_parametros; i++)
+    {
+        (*vlr_parametros)[i] = malloc(sizeof(char) * 100);
+    }
+
     for (int j = 0; j < num_parametros; j++)
     {
         char parametro[20];
@@ -79,8 +87,8 @@ void decodificar_parametros(int* index_parametros, char** vlr_parametros, int nu
             scanf("%s", valor_parametro);
 
             int val = atoi(valor_parametro);
-            index_parametros[j] = 0;
-            memcpy(vlr_parametros[j], &val, sizeof(val));
+            (*index_parametros)[j] = 0;
+            memcpy((*vlr_parametros)[j], &val, sizeof(val));
         }
         else if (strcmp(parametro, "idade") == 0)
         {
@@ -88,16 +96,16 @@ void decodificar_parametros(int* index_parametros, char** vlr_parametros, int nu
             scanf("%s", valor_parametro);
 
             int val = atoi(valor_parametro);
-            index_parametros[j] = 1;
-            memcpy(vlr_parametros[j], &val, sizeof(val));
+            (*index_parametros)[j] = 1;
+            memcpy((*vlr_parametros)[j], &val, sizeof(val));
         }
         else if (strcmp(parametro, "nomeJogador") == 0)
         {
             char valor_parametro[100];
             ler_string_entre_aspas(valor_parametro);
 
-            index_parametros[j] = 2;
-            strcpy(vlr_parametros[j], valor_parametro);
+            (*index_parametros)[j] = 2;
+            strcpy((*vlr_parametros)[j], valor_parametro);
         }
         else if (strcmp(parametro, "nomeClube") == 0)
         {
@@ -105,18 +113,15 @@ void decodificar_parametros(int* index_parametros, char** vlr_parametros, int nu
             ler_string_entre_aspas(valor_parametro);
 
             index_parametros[j] = 4;
-            printf("%s\n", valor_parametro);
-            printf("%d\n", j);
             strcpy(vlr_parametros[j], valor_parametro);
-            printf("oi\n");
         }
         else if (strcmp(parametro, "nacionalidade") == 0)
         {
             char valor_parametro[100];
             ler_string_entre_aspas(valor_parametro);
 
-            index_parametros[j] = 3;
-            strcpy(vlr_parametros[j], valor_parametro);
+            (*index_parametros)[j] = 3;
+            strcpy((*vlr_parametros)[j], valor_parametro);
         }
     }
 }
@@ -199,6 +204,8 @@ int main()
 
         scanf("%s %d", bin_path, &qtd_buscas);
         Table *table = table_access(bin_path, format);
+        table_create_index(table, "aux.bin", 0, 4);
+        table_load_index(table, "aux.bin");
 
         if (table == NULL)
         {
@@ -213,11 +220,11 @@ int main()
             int num_parametros;
             scanf("%d", &num_parametros);
 
-            int parametros[5] = {-1, -1, -1, -1, -1};
-            char valor_parametros[5][100];
+            int *parametros;
+            char **valor_parametros;
 
-            decodificar_parametros(parametros, valor_parametros, num_parametros);
-            printf("oi\n");
+            decodificar_parametros((int*)parametros, (char**)valor_parametros, num_parametros);
+
             int num_validos = 0;
 
             while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
@@ -257,43 +264,7 @@ int main()
     }
     else if(command == 5)
     {
-        char bin_path[100];
-        int qtd_buscas;
 
-        scanf("%s %d", bin_path, &qtd_buscas);
-        Table *table = table_access(bin_path, format);
-
-        if (table == NULL)
-        {
-            printf("Falha no processamento do arquivo.\n");
-            return 0;
-        }
-
-        for (int i = 0; i < qtd_buscas; i++)
-        {
-            printf("Busca %d\n\n", i + 1);
-
-            int num_parametros;
-            scanf("%d", &num_parametros);
-
-            int parametros[5] = {-1, -1, -1, -1, -1};
-            char valor_parametros[5][100];
-
-            decodificar_parametros((int *)parametros, (char **)valor_parametros, num_parametros);
-
-            int num_validos = 0;
-
-            while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
-            {
-                printar_registro_formatado(table->current_register.data);
-                num_validos++;
-            }
-
-            if (num_validos == 0)
-            {
-                printf("Registro inexistente.\n\n");
-            }
-        }
     }
 
     return 0;
