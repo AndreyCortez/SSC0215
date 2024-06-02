@@ -28,6 +28,7 @@ typedef struct
     void** key;
     int64_t* byte_offset;
     int key_size;
+    int key_row;
 } Index;
 
 // Estrutura que guarda dados da tabela

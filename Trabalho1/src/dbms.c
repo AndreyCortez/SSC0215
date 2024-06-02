@@ -149,6 +149,8 @@ Table *table_access(char *path, char *format)
 
     table_reset_register_pointer(table);
     table->has_index = false;
+    table->index.key = NULL;
+    table->index.byte_offset = NULL;
     return table;
 }
 
@@ -324,7 +326,6 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
         for (int i = 0; i < num_parameters; i++)
             if (indexes[i] == 0 && table->has_index)
             {
-                printf("oi\n");
                 bool sr = table_search_using_index(table, data[i]);
                 if (sr)
                     search_state = 1;
@@ -436,6 +437,10 @@ bool table_create_index(Table *table, char *path, int key_row, int key_size)
     fwrite("1", sizeof(char), 1, arquivo);
 
     fclose(arquivo);
+    
+    table->index.key_size = key_size;
+    table->index.key_row = key_row;
+
     return true;
 }
 
@@ -450,7 +455,11 @@ bool table_load_index(Table *table, char *path)
         return false;
     }
 
+    fseek(arquivo, 0, SEEK_SET);
+
     fwrite("0", sizeof(char), 1, arquivo);
+    fseek(arquivo, 1, SEEK_SET);
+
 
     if (table->index.key != NULL)
     {
@@ -464,13 +473,20 @@ bool table_load_index(Table *table, char *path)
         table->index.byte_offset = NULL;
     }
 
-    table->index.key = malloc(sizeof(int32_t) * table->num_reg);
+    table->index.key = malloc(sizeof(void*) * table->num_reg);
+    for (int i = 0; i < table->num_reg; i++)
+    {
+        //printf("%d\n", table->index.key_size);
+        table->index.key[i] = malloc(table->index.key_size);
+    }
+
     table->index.byte_offset = malloc(sizeof(int64_t) * table->num_reg);
 
     for (int i = 0; i < table->num_reg; i++)
     {
         //printf("%d\n", i);
-        fread(&(table->index.key[i]), sizeof(char), 4, arquivo);
+        fread((table->index.key[i]), sizeof(char), table->index.key_size, arquivo);
+        //printf("%d\n", *((int32_t *)(table->index.key[i])));
         fread(&(table->index.byte_offset[i]), sizeof(char), 8, arquivo);
     }
 
@@ -482,17 +498,13 @@ bool table_load_index(Table *table, char *path)
     return true;
 }
 
-bool align_current_register_fpointer(Table *table)
-{
-    fseek(table->f_pointer, ftell(table->f_pointer) - table->current_register.tam_reg, SEEK_SET);
-    return true;
-}
 
 bool table_delete_current_register(Table *table)
 {
-    align_current_register_fpointer(table);
+    printf("%d\n", table->current_register.tam_reg);
+    fseek(table->f_pointer, -table->current_register.tam_reg, SEEK_CUR);
     fwrite("0", sizeof(char), 1, table->f_pointer);
-    fseek(table->f_pointer, ftell(table->f_pointer) - 1, SEEK_SET);
+    fseek(table->f_pointer, -1, SEEK_CUR);
     table_move_to_next_register(table);
 
     return true;
@@ -502,9 +514,9 @@ bool table_search_using_index(Table *table, void *key)
 {
     for (int i = 0; i < table->num_reg; i++)
     {
-        printf("oi\n");
-        printf("%d %d\n", *((int32_t*)(table->index.key[i])), *((int32_t*)key));
-        if (table->index.key[i] == key)
+        //printf("oi\n");
+        //printf("%d %d\n", *((int32_t*)(table->index.key[i])), *((int32_t*)key));
+        if (*((int32_t*)(table->index.key[i])) == *((int32_t*)key))
         {
             fseek(table->f_pointer, table->index.byte_offset[i], SEEK_SET);
             return table_move_to_next_register(table);
