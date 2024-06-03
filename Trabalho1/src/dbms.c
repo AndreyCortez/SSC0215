@@ -352,12 +352,14 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
     if (search_state == 0)
     {
         table_reset_register_pointer(table);
+
         for (int i = 0; i < num_parameters; i++)
             if (indexes[i] == 0 && table->has_index)
             {
                 bool sr = table_search_using_index(table, data[i]);
                 if (sr)
                     search_state = 1;
+                
                 return sr;
             }
 
@@ -366,6 +368,7 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
     else if (search_state == 1)
     {
         //printf("passou aqui?\n");
+        search_state = 0;
         return false;
     }
     while (table_move_to_next_register(table))
@@ -380,7 +383,7 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
 
             if (table->format[indexes[i]] == 's')
             {
-                printf("a:%s| b:%s|\n", value, data_temp);
+                //printf("a:%s| b:%s|\n", value, data_temp);
                 if (strcmp(data_temp, value) != 0)
                 {
                     match = false;
@@ -550,9 +553,7 @@ bool table_delete_current_register(Table *table)
 
     table->num_removed += 1;
     table->num_reg -= 1;
-    
-    // printf("%d\n", table->current_register.tam_reg);
-
+    table->pos_reg -= 1;
 
     rewrite_current_register(table);
     write_table_header(table, '1');
