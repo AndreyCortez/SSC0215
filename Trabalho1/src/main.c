@@ -295,7 +295,7 @@ int main()
             while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
             {
                 //printf("oi\n");
-                printar_registro_formatado(table->current_register.data);
+                //printar_registro_formatado(table->current_register.data);
                 table_delete_current_register(table);
             }
 

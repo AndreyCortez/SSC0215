@@ -380,7 +380,7 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
 
             if (table->format[indexes[i]] == 's')
             {
-                //printf("a:%s| b:%s|\n", value, data_temp);
+                printf("a:%s| b:%s|\n", value, data_temp);
                 if (strcmp(data_temp, value) != 0)
                 {
                     match = false;
@@ -538,32 +538,16 @@ bool rewrite_current_register(Table* table)
 }
 
 
-bool propagate_byte_offset(Table* table, int byte_offset)
-{
-    char a;
-    uint64_t b;
-    fseek(table->f_pointer, table->top + 5, SEEK_SET);
-    fread(&b, 1, 8, table->f_pointer);
-    while(b != -1)
-    {
-        if (b > byte_offset)
-        {
-            fseek   
-        }
-    }
-}
-
 bool table_delete_current_register(Table *table)
 {
 
     write_table_header(table, '0');
-
     table->current_register.removed = '1';
-    if (table->top > table->current_register.byte_offset)
-        table->top = table->current_register.byte_offset;
-    else
-        propagate_byte_offset(table, table->current_register.byte_offset);
-    table->top = table->current_register.prox_reg;
+
+    int64_t aux = table->top;
+    table->top = table->current_register.byte_offset;
+    table->current_register.prox_reg = aux;
+
     table->num_removed += 1;
     table->num_reg -= 1;
     
