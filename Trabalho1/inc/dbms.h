@@ -82,7 +82,7 @@ void table_free(Table **tab);
 
 bool table_create_index(Table *table, char* path, int key_row, int key_size);
 bool table_load_index(Table *table, char* path);
-bool table_search_using_index(Table *tab, void* key);
-bool table_delete_using_index(Table *tab, void* key);
+
+bool table_insert_new_register(Table* table, void *data, int data_size);
 
 #endif

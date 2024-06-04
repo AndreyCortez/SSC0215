@@ -294,10 +294,44 @@ int main()
 
             while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
             {
-                //printf("oi\n");
-                //printar_registro_formatado(table->current_register.data);
                 table_delete_current_register(table);
             }
+
+            table_create_index(table, index_bin_path, 0, 4);
+            table_load_index(table, index_bin_path);
+
+        }
+        binarioNaTela(bin_path);
+        binarioNaTela(index_bin_path);
+    }
+    else if(command == 6)
+    {
+        char bin_path[100];
+        char index_bin_path[100];
+        int qtd_buscas;
+
+        scanf("%s %s %d", bin_path, index_bin_path, &qtd_buscas);
+        Table *table = table_access(bin_path, format);
+        table_create_index(table, index_bin_path, 0, 4);
+        table->has_index = false;
+
+        if (table == NULL)
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return 0;
+        }
+
+        for (int i = 0; i < qtd_buscas; i++)
+        {
+            int num_parametros;
+            scanf("%d", &num_parametros);
+
+            int *parametros;
+            char **valor_parametros;
+
+            decodificar_parametros(&parametros, &valor_parametros, num_parametros);
+
+            
 
             table_create_index(table, index_bin_path, 0, 4);
             table_load_index(table, index_bin_path);
