@@ -595,6 +595,7 @@ int64_t find_ptr_to_best_fit(Table *table, int tam)
     int64_t cur_offset = ftell(table->f_pointer);
 
     int64_t aux_offset = table->top;
+    int64_t old_offset = 1;
     // printf("%lld\n", table->top);
 
     int best_fit = INT32_MAX;
@@ -611,14 +612,16 @@ int64_t find_ptr_to_best_fit(Table *table, int tam)
         // getchar();
 
         aux_fit -= tam;
-        // printf("%lld %d %d\n", aux_offset, best_fit, aux_fit);
+        //printf("%lld %d %d\n", aux_offset, best_fit, aux_fit);
 
         if ((aux_fit >= 0 && aux_fit <= best_fit))
         {
             best_fit = aux_fit;
             fseek(table->f_pointer, cur_offset, SEEK_SET);
-            return ret_offset;
+            return old_offset;
         }
+
+        old_offset = ret_offset;
     }
 
     // printf("%lld\n", ret_offset);
@@ -687,11 +690,6 @@ bool table_insert_new_register(Table *table, char **row)
     fwrite(data, sizeof(char), data_size - register_header_size, table->f_pointer);
 
     int remainig_space = tam_reg - data_size;
-
-    if (tam_reg > 1000)
-    {
-        quick_exit(1);
-    }
 
     while (remainig_space > 0)
     {

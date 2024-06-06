@@ -15,11 +15,11 @@ all: $(TARGET)
 
 # Compilar os arquivos objeto
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@ -g
+	$(CC) $(CFLAGS) -c $< -o $@ -g -Wall -Wextra -pedantic -std='c99'
 
 # Linkar os objetos para gerar o executável
 $(TARGET): $(OBJ_FILES)
-	$(CC) $^ -o $@ -g
+	$(CC) $^ -o $@ -g -Wall -Wextra -pedantic -std='c99'
 
 # Executar o programa
 run:
