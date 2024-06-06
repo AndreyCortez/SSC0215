@@ -339,7 +339,7 @@ int main()
             {
                 parametros[i] = malloc(sizeof(char) * 100);
                 ler_string_entre_aspas(parametros[i]);
-                printf("%s\n", parametros[i]);
+                //printf("%s\n", parametros[i]);
             }
 
             table_insert_new_register(table, parametros);
@@ -347,10 +347,10 @@ int main()
             table_create_index(table, index_bin_path, 0, 4);
             table_load_index(table, index_bin_path);
         }
+        table_free(&table);
+
         binarioNaTela(bin_path);
         binarioNaTela(index_bin_path);
-
-        table_free(&table);
     }
 
     return 0;
