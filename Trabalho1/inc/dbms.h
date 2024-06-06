@@ -83,6 +83,6 @@ void table_free(Table **tab);
 bool table_create_index(Table *table, char* path, int key_row, int key_size);
 bool table_load_index(Table *table, char* path);
 
-bool table_insert_new_register(Table* table, void *data, int data_size);
+bool table_insert_new_register(Table* table, char** row);
 
 #endif

@@ -62,17 +62,28 @@ void ler_string_entre_aspas(char *str)
 
             return;
         }
+        else if (c1 != ' ' && c1 != '\n' && c1 != EOF)
+        {
+            char c = c1;
+            while (c != ' ' && c != '\n' && c != EOF)
+            {
+                str[iterator] = c;
+                iterator += 1;
+                c = getchar();
+            }
+            str[iterator] = '\0';
+
+            return;
+        }
     }
 }
 
-
-void decodificar_parametros(int** index_parametros, char*** vlr_parametros, int num_parametros)
+void decodificar_parametros(int **index_parametros, char ***vlr_parametros, int num_parametros)
 {
     *index_parametros = malloc(sizeof(int) * num_parametros);
     memset(*index_parametros, -1, num_parametros);
 
-    *vlr_parametros = malloc(sizeof(char*) * num_parametros);
-
+    *vlr_parametros = malloc(sizeof(char *) * num_parametros);
 
     for (int i = 0; i < num_parametros; i++)
     {
@@ -132,7 +143,7 @@ void decodificar_parametros(int** index_parametros, char*** vlr_parametros, int 
 // função principal do programa
 int main()
 {
-    // formato dos itens no csv 
+    // formato dos itens no csv
     char format[] = "%d %d %s %s %s";
 
     // comando a ser executado
@@ -163,8 +174,8 @@ int main()
         table_save(new_table, bin_path);
         binarioNaTela(bin_path);
 
-        //csv_free_handle(&hand);
-        //table_free(&new_table);
+        // csv_free_handle(&hand);
+        // table_free(&new_table);
         fclose(file);
     }
     // Segundo comando, imprime os dados de um binário
@@ -195,7 +206,7 @@ int main()
             printf("Registro inexistente.\n\n");
         }
 
-        //table_free(&table);
+        // table_free(&table);
     }
     // Comando de busca
     // entrada primaria: caminho do binario, numero de entradas secundarias
@@ -230,7 +241,7 @@ int main()
 
             int num_validos = 0;
 
-            while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
+            while (table_search_for_matches(table, (void **)valor_parametros, parametros, num_parametros))
             {
                 printar_registro_formatado(table->current_register.data);
                 num_validos++;
@@ -242,7 +253,7 @@ int main()
             }
         }
 
-        //table_free(&table);
+        table_free(&table);
     }
     else if (command == 4)
     {
@@ -262,10 +273,10 @@ int main()
 
         table_create_index(table, index_bin_path, 0, 4);
 
-        //table_free(&table);
+        table_free(&table);
         binarioNaTela(index_bin_path);
     }
-    else if(command == 5)
+    else if (command == 5)
     {
         char bin_path[100];
         char index_bin_path[100];
@@ -292,25 +303,24 @@ int main()
 
             decodificar_parametros(&parametros, &valor_parametros, num_parametros);
 
-            while (table_search_for_matches(table, (void**) valor_parametros, parametros, num_parametros))
+            while (table_search_for_matches(table, (void **)valor_parametros, parametros, num_parametros))
             {
                 table_delete_current_register(table);
             }
 
             table_create_index(table, index_bin_path, 0, 4);
             table_load_index(table, index_bin_path);
-
         }
         binarioNaTela(bin_path);
         binarioNaTela(index_bin_path);
     }
-    else if(command == 6)
+    else if (command == 6)
     {
         char bin_path[100];
         char index_bin_path[100];
-        int qtd_buscas;
+        int qtd_insercoes;
 
-        scanf("%s %s %d", bin_path, index_bin_path, &qtd_buscas);
+        scanf("%s %s %d", bin_path, index_bin_path, &qtd_insercoes);
         Table *table = table_access(bin_path, format);
         table_create_index(table, index_bin_path, 0, 4);
         table->has_index = false;
@@ -321,24 +331,26 @@ int main()
             return 0;
         }
 
-        for (int i = 0; i < qtd_buscas; i++)
+        for (int i = 0; i < qtd_insercoes; i++)
         {
-            int num_parametros;
-            scanf("%d", &num_parametros);
 
-            int *parametros;
-            char **valor_parametros;
+            char *parametros[5];
+            for (int i = 0; i < 5; i++)
+            {
+                parametros[i] = malloc(sizeof(char) * 100);
+                ler_string_entre_aspas(parametros[i]);
+                printf("%s\n", parametros[i]);
+            }
 
-            decodificar_parametros(&parametros, &valor_parametros, num_parametros);
-
-            
+            table_insert_new_register(table, parametros);
 
             table_create_index(table, index_bin_path, 0, 4);
             table_load_index(table, index_bin_path);
-
         }
         binarioNaTela(bin_path);
         binarioNaTela(index_bin_path);
+
+        table_free(&table);
     }
 
     return 0;
