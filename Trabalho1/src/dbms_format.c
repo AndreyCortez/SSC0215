@@ -142,3 +142,26 @@ void *get_data_in_collumn(void *data, char *format, int index)
 
     return NULL;
 }
+
+int size_of_row(void *data, char* format)
+{
+    int size = 0;
+    char *aux_ptr = format;
+
+    while (*aux_ptr != '\0')
+    {
+        if (*aux_ptr == 'd')
+        {
+            size += 4;
+        }
+        else if (*aux_ptr == 's')
+        {
+
+            void *_d = (char*)data + size;
+            size += *((int32_t *)_d) + 4;
+        }
+        aux_ptr++;
+    }
+
+    return size;
+}

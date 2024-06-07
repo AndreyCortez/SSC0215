@@ -141,6 +141,9 @@ void write_table_header(Table *table, char status)
         table->status = '1';
     }
 
+    // Flush para evitar erros imprevisiveis
+    fflush(table->f_pointer);
+
     // No final da execução o ponteiro do arquivo volta para onde ele estava antes
     fseek(table->f_pointer, ini_offset, SEEK_SET);
 
@@ -158,15 +161,9 @@ bool table_append_register(Table *table, Register reg)
     
     // Para anexar um registro é necessário estar no fim do arquivo
     fseek(table->f_pointer, table->next_byte_offset, SEEK_SET);
-
-    // Escreve o registro
-    fwrite(&(reg.removed), sizeof(reg.removed), 1, table->f_pointer);
-    fwrite(&(reg.tam_reg), sizeof(reg.tam_reg), 1, table->f_pointer);
-    fwrite(&(reg.prox_reg), sizeof(reg.prox_reg), 1, table->f_pointer);
-
-    // Quando vamos anexar um registro no final do arquivo o tamanho
-    // do seu campo de dados é equivalente ao seu tamanho menos o tamanho de seu cabeçalho
-    fwrite(reg.data, sizeof(char), reg.tam_reg - register_header_size, table->f_pointer);
+    
+    // Função que escreve um registro no arquivo
+    write_register(reg, table->f_pointer, table->format);
     table->num_reg += 1;
 
     // Ao anexar a tabela recebe um novo top
@@ -250,17 +247,6 @@ bool table_move_to_next_register(Table *table)
 
     // Retorna o ponteiro do arquivo para onde ele estava antes da função iniciar
     fseek(table->f_pointer, ini_offset, SEEK_SET);
-    return true;
-}
-
-
-
-// Reescreve o registro que está sendo atualmente acessado
-bool rewrite_current_register(Table *table)
-{
-    fseek(table->f_pointer, -table->current_register.tam_reg, SEEK_CUR);
-    //write_current_register(table->f_pointer, table->current_register);
-    fseek(table->f_pointer, -register_header_size, SEEK_CUR);
     return true;
 }
 
@@ -353,18 +339,21 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
 
 bool table_delete_current_register(Table *table)
 {
-
+    // Coloca o status da tabela como instável
     write_table_header(table, '0');
-    table->current_register.removed = '1';
 
+    // Começa a alterar o registro  
+    table->current_register.removed = '1';
+    
     int64_t aux = table->top;
+
     table->top = table->current_register.byte_offset;
     table->current_register.prox_reg = aux;
 
     table->num_removed += 1;
     table->num_reg -= 1;
 
-    rewrite_current_register(table);
+    write_register(table->current_register, table->f_pointer, table->format);
     write_table_header(table, '1');
 
     return true;
@@ -374,113 +363,110 @@ bool table_delete_current_register(Table *table)
 
 int64_t find_ptr_to_best_fit(Table *table, int tam)
 {
-    int64_t cur_offset = ftell(table->f_pointer);
+    // Endereço de retorno do ponteiro do arquivo ao fim da execução da função
+    int64_t ini_offset = ftell(table->f_pointer);
 
-    int64_t aux_offset = table->top;
+    // Começamos a iterar a partir do endereço presente no top do header
+    int64_t iterator_offset = table->top;
+    // Offset anterior ao de iteração, seu primeiro valor é o offset do table top
     int64_t old_offset = 1;
-    // printf("%lld\n", table->top);
 
-    int best_fit = INT32_MAX;
-    int aux_fit = -1;
+    // Tamanho do refistradir que está sendo iterado sobre
+    int tam_cur_reg = -1;
 
-    while (aux_offset > 0)
+    // Caso o ponteiro seja válido, iteramos sobre ele
+    while (iterator_offset > 0)
     {
-        fseek(table->f_pointer, aux_offset + 1, SEEK_SET);
-        fread(&aux_fit, sizeof(int32_t), 1, table->f_pointer);
+        // Nos movemos o ponteiro do arquivo para o ponteiro do iterados,
+        // pulamos o primeiro bit pois esse é o status de remoção do registro
+        fseek(table->f_pointer, iterator_offset + 1, SEEK_SET);
 
-        int64_t ret_offset = ftell(table->f_pointer);
-        fread(&aux_offset, sizeof(int64_t), 1, table->f_pointer);
+        // Lemos o tamanho do registro
+        fread(&tam_cur_reg, sizeof(int32_t), 1, table->f_pointer);
 
-        // getchar();
-
-        aux_fit -= tam;
-        //printf("%lld %d %d\n", aux_offset, best_fit, aux_fit);
-
-        if ((aux_fit >= 0 && aux_fit <= best_fit))
+        if (tam_cur_reg >= tam)
         {
-            best_fit = aux_fit;
-            fseek(table->f_pointer, cur_offset, SEEK_SET);
+            // Caso haja um match, retornamos de imediato, pois os registros 
+            // removidos estão em uma lista encadeada crescente
+            fseek(table->f_pointer, ini_offset, SEEK_SET);
             return old_offset;
         }
 
-        old_offset = ret_offset;
+        // Caso contrário salvamos o valor do offset antigo e movemos para o proximo
+        old_offset = ftell(table->f_pointer);
+        fread(&iterator_offset, sizeof(int64_t), 1, table->f_pointer);
     }
 
-    // printf("%lld\n", ret_offset);
+    // Retornando o ponteiro ao seu estado inicial
+    fseek(table->f_pointer, ini_offset, SEEK_SET);
 
-    fseek(table->f_pointer, cur_offset, SEEK_SET);
+    // Caso não exita espaço na tabela para o registro
+    // Retonamos -1 que é especial 
     return -1;
 }
 
-bool table_insert_new_register(Table *table, char **row)
+bool table_insert_new_row(Table *table, char **row)
 {
+    // valor para onde o offset do arquivo retorna após a execução da função
+    int64_t ini_offset = ftell(table->f_pointer);
+
+    // Status do arquivo é colocado como 0
     write_table_header(table, '0');
 
+    // Tamanho do registrador que vai precisar ser inserido
     int data_size = format_len(table->format, row) + register_header_size;
-    // printf("%d\n", data_size);
+    // Compactamos os dados no formato correto antes de inseri-los
     void *data = format_data(table->format, row);
 
-    int64_t cur_offset = ftell(table->f_pointer);
-
+    // Endereço onde está armazenado o byteoffset do bestfit
+    // É necessário fazer isso para realizar a remoção na lista encadeada
     int64_t before_best = find_ptr_to_best_fit(table, data_size);
-    int64_t best_fit;
+        
+    Register new_register;
+    new_register.data = data;
+    new_register.prox_reg = -1;
+    new_register.removed = '0';
 
-    int tam_reg;
-
+    // Nesse caso não há registros removidos que caibam os dados
+    // anexamos então o novo registro ao final da lista
     if (before_best < 0)
     {
-        best_fit = table->next_byte_offset;
-        table->next_byte_offset += data_size;
-        tam_reg = data_size;
+        new_register.byte_offset = table->top;
+        new_register.tam_reg = data_size;
+        table_append_register(table, new_register);
     }
     else
     {
-        int64_t next;
+        int64_t best_fit;
         fseek(table->f_pointer, before_best, SEEK_SET);
-        fread(&next, sizeof(int64_t), 1, table->f_pointer);
-        //printf("%d\n", next);
+        fread(&best_fit, sizeof(int64_t), 1, table->f_pointer);
 
-        int64_t current = next;
+        new_register.byte_offset = best_fit;
 
-        fseek(table->f_pointer, next + 1, SEEK_SET);
-        fread(&tam_reg, sizeof(int), 1, table->f_pointer);
-        fread(&next, sizeof(int64_t), 1, table->f_pointer);
+        fseek(table->f_pointer, best_fit + 1, SEEK_SET);
+        fread(&(new_register.tam_reg), sizeof(int), 1, table->f_pointer);
+        
+        // endereço do registrado next ao best
+        int64_t after_best;
+        fread(&after_best, sizeof(int64_t), 1, table->f_pointer);
 
         fseek(table->f_pointer, before_best, SEEK_SET);
-        fwrite(&next, sizeof(int64_t), 1, table->f_pointer);
+        fwrite(&after_best, sizeof(int64_t), 1, table->f_pointer);
+
+        // caso especial onde o before_best é o table top
         if (before_best == 1)
-            table->top = next;
+            table->top = after_best;
 
-        fseek(table->f_pointer, current + 1, SEEK_SET);
-        //printf("%d\n", tam_reg);
-
+        write_register(new_register, table->f_pointer, table->format);
         table->num_removed -= 1;
-        best_fit = current;
+        table->num_reg += 1;
     }
 
-    fseek(table->f_pointer, best_fit, SEEK_SET);
-
-    // Register new_register;
-    // new_register.data = data;
-    // new_register.prox_reg = -1;
-    // new_register.removed = '0';
-    // new_register.tam_reg = tam_reg;
-
-    //write_register_header(table->f_pointer, new_register);
-    fwrite(data, sizeof(char), data_size - register_header_size, table->f_pointer);
-
-    int remainig_space = tam_reg - data_size;
-
-    while (remainig_space > 0)
-    {
-        fputc('$', table->f_pointer);
-        remainig_space -= 1;
-    }
-
-    table->num_reg += 1;
+    // Colocamos o status do arquivo como consitente
     write_table_header(table, '1');
 
-    fseek(table->f_pointer, cur_offset, SEEK_SET);
+    // Retornamos ao estado inicial
+    fseek(table->f_pointer, ini_offset, SEEK_SET);
 
     return true;
 }

@@ -10,3 +10,4 @@ void *format_data(char *format, char **data);
 int format_len(char *format, char **data);
 char *decode_format(char *format);
 void *get_data_in_collumn(void *data, char *format, int collumn);
+int size_of_row(void *data, char* format);

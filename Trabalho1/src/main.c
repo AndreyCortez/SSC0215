@@ -340,7 +340,7 @@ int main()
                 table_delete_current_register(table);
             }
 
-            // O indice é reciado a cada vez que há uma alteração na tabela
+            // O indice é recriado a cada vez que há uma alteração na tabela
             table_create_index(table, index_bin_path, 0, 4);
         }
 
@@ -378,7 +378,7 @@ int main()
             }
 
             // Função que insere um novo registro na tabela
-            table_insert_new_register(table, parametros);
+            table_insert_new_row(table, parametros);
 
             // Reseta o arquivo indice, agora com o novo valor que foi inserido
             table_create_index(table, index_bin_path, 0, 4);

@@ -10,29 +10,12 @@
 #include "csv.h"
 #include "dbms_format.h"
 #include "dbms_index.h"
+#include "dbms_register.h"
 
-#define register_header_size 13
+
 #define table_header_size 25
 
-// Estrutura que guarda dados do index
-typedef struct
-{
-    void** key;
-    int64_t* byte_offset;
-    int key_size;
-    int key_row;
-} Index;
 
-
-// Estrutura que guarda dados do registro
-typedef struct
-{
-    char removed;
-    int32_t tam_reg;
-    int64_t prox_reg;
-    int64_t byte_offset;
-    void *data;
-} Register;
 
 // Estrutura que guarda dados da tabela
 typedef struct
@@ -87,8 +70,7 @@ bool table_search_for_matches(Table *table, void** data, int* indexes, int num_p
 // Libera a memoria utilizada pela tabela
 void table_free(Table **tab);
 
-bool table_insert_new_register(Table* table, char** row);
-
+bool table_insert_new_row(Table* table, char** row);
 
 bool table_create_index(Table *table, char* path, int key_row, int key_size);
 bool table_load_index(Table *table, char *path, int key_row, int key_size);
