@@ -50,6 +50,12 @@ typedef struct
     
     Index index;
     bool index_loaded;
+
+    // Essa variável decide o estado da busca dos intens dentro da tabela
+    // 0 : Uma busca não esta em progresso ou a busca com indice retornou false
+    // 1 : Uma busca acabou de ser realizada usando indice e foi bem sucessedida
+    // 2 : Uma busca está em progresso
+    int search_state;
 } Table;
 
 

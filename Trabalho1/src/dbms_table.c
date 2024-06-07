@@ -4,7 +4,7 @@
 // Descrições detalhadas de cada função presentes em suas definições
 
 bool search_using_index(Table *table, void *key);
-void write_table_header(Table *table, char status);
+static void write_table_header(Table *table, char status);
 
 
 // Cria a tabela
@@ -57,6 +57,8 @@ Table *table_create(char* path, char ***raw_data, char *format, int num_rows)
     table->index.key = NULL;
     table->index.byte_offset = NULL;
 
+    table->search_state = 0;
+
     return table;
 }
 
@@ -101,6 +103,8 @@ Table *table_access(char *path, char *format)
     table->index_loaded = false;
     table->index.key = NULL;
     table->index.byte_offset = NULL;
+
+    table->search_state = 0;
 
     return table;
 }
@@ -264,17 +268,11 @@ bool rewrite_current_register(Table *table)
 // A seguinte função é usada para realizar uma busca dentro da tabela, ela vai procurar
 // os registros que batem com os valores pedidos para as chaves especificas
 
-// Essa variável decide o estado da busca dos intens dentro da tabela
-// 0 : Uma busca não esta em progresso ou a busca com indice retornou false
-// 1 : Uma busca acabou de ser realizada usando indice e foi bem sucessedida
-// 2 : Uma busca está em progresso
-int search_state = 0;
-
 // A seguinte função SEMPRE deve ser usada dentro de um laço pois ela envolve estados
 // while (table_search_for_matches(...)) {/* Seu código aqui*/}
 bool table_search_for_matches(Table *table, void **data, int *indexes, int num_parameters)
 {
-    if (search_state == 0)
+    if (table->search_state == 0)
     {
 
         // Checa se o indice da PK está presente entre as chaves 
@@ -288,22 +286,22 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
                 // caso a busca tenha dado certo ele muda para o estado 1 e retorna verdadeiro
                 // para que a função execute um laço uma vez antes de sair dele
                 if (sr)
-                    search_state = 1;
+                    table->search_state = 1;
 
                 return sr;
             }
 
         // Caso não seja possível usar o indice a busca é feita de item por item
         // Muda-se o estado de busca para 2
-        search_state = 2;
+        table->search_state = 2;
 
         // Prepara o ponteiro do current_register para uma nova busca
         table_reset_register_pointer(table);
     }
-    else if (search_state == 1)
+    else if (table->search_state == 1)
     {
         // Reseta a busca e retorna falso para sair do laço
-        search_state = 0;
+        table->search_state = 0;
         return false;
     }
     // Mesma lógica para a funcionalidade 2 que acessa todos on indices
@@ -349,7 +347,7 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
     }
 
     // Chegamos ao fim do arquivo, aqui resetamos o estado da busca e interrompemos o laço
-    search_state = 0;
+    table->search_state = 0;
     return false;
 }
 
