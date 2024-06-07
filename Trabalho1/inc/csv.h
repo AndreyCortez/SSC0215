@@ -15,11 +15,12 @@ typedef struct
     int num_rows;
     int num_collumns;
     char **header;
+    FILE *f_pointer;
 } CSV_handler;
 
 // Abre o arquivo csv e salva seus dados em uma estrutura adequada para 
 // manipulação por código
-CSV_handler *csv_parse(FILE *file, bool has_header);
+CSV_handler *csv_parse(char *file, bool has_header);
 
 // Libera a memoria usada pela estrutura quando a mesma não for mais
 // necessária

@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include "csv.h"
+#include "dbms_format.h"
 
 #define register_header_size 13
 #define table_header_size 25
@@ -34,40 +35,38 @@ typedef struct
 // Estrutura que guarda dados da tabela
 typedef struct
 {
-    void **data;
-    int data_size;
-
+    char status;
     int64_t top;
     int64_t next_byte_offset;
     int32_t num_reg;
-    int32_t pos_reg;
     int32_t num_removed;
-    char *format;
-    int num_fields;
-    int field_types;
-    FILE *f_pointer;
-    Register current_register;
-    Register *register_headers;
 
+    char *format;
+    FILE *f_pointer;
+    
+    Register current_register;
+    
     Index index;
-    bool has_index;
+    bool index_loaded;
 } Table;
 
 
 
 // Função para criar uma tabela a partir de dados especificos
-Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns);
+Table *table_create(char* path, char ***raw_data, char *format, int num_rows);
 
 // Função para criar uma tabela a partir de uma handler de csv
-Table *table_create_from_csv(CSV_handler *handler, char *format);
+Table *table_create_from_csv(char* path, CSV_handler *handler, char *format);
 
 // Salva a tabela na memória como um binário
-void table_save(Table *table, char *path);
+bool table_save(Table *table, char *path);
 
 // Acessa a tabela na memória
 // NOTA: não carrega o campo data
 Table *table_access(char *path, char* format);
 
+
+bool table_append_register(Table *table, Register reg);
 // Move o ponteiro de registro da tabela para o proximo registro
 bool table_move_to_next_register(Table *table);
 // Move o ponteiro de registro da tabela para o primeiro registro
@@ -81,7 +80,7 @@ bool table_search_for_matches(Table *table, void** data, int* indexes, int num_p
 void table_free(Table **tab);
 
 bool table_create_index(Table *table, char* path, int key_row, int key_size);
-bool table_load_index(Table *table, char* path);
+bool table_load_index(Table *table, char* path, int key_size);
 
 bool table_insert_new_register(Table* table, char** row);
 

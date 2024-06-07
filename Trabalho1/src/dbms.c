@@ -1,413 +1,326 @@
 #include "dbms.h"
 
 // Funções auxiliares para a criação da tabela
-void *format_data(char *format, char **data);
-int format_len(char *format, char **data);
-char *decode_format(char *format);
-bool search_using_index(Table *table, void *key);
+// Descrições detalhadas de cada função presentes em suas definições
 
-Table *table_create(char ***raw_data, char *format, int num_rows, int num_collumns)
+bool search_using_index(Table *table, void *key);
+void write_table_header(Table *table, char status);
+
+
+// Cria a tabela
+Table *table_create(char* path, char ***raw_data, char *format, int num_rows)
 {
+    FILE *file = fopen(path, "r+b");
+
+    // Caso o arquivo não exista ele é criado
+    if (file == NULL) {
+        file = fopen(path, "w+b");
+
+        // Caso isso falhe retorna NULL
+        if (file == NULL) 
+            return NULL;
+    }
+
+    // Inicializa espaço na memória para uma nova tabela
     Table *table;
     table = (Table *)malloc(sizeof(Table));
 
+    // Faz a decodificação do formato das colunas da tabela 
+    table->status = '0';
     table->format = decode_format(format);
-    table->data = (void **)malloc(sizeof(void *) * num_rows);
-    table->data_size = num_rows;
-    table->register_headers = (Register *)malloc(sizeof(Register) * num_rows);
+    table->top = -1;
+    table->next_byte_offset = table_header_size;
+    table->num_reg = 0;
+    table->num_removed = 0;
+    table->index_loaded = false;
+    table->f_pointer = file;
 
-    uint64_t next_byte_offset = table_header_size;
+    write_table_header(table, '0');
 
     for (int i = 0; i < num_rows; i++)
     {
-        // printf("%s\n", table->format);
-        table->data[i] = format_data(table->format, raw_data[i]);
-
-        // printf("oi\n");
-        Register reg_header;
-        reg_header.removed = '0';
-        reg_header.tam_reg = format_len(table->format, raw_data[i]) + register_header_size;
-        next_byte_offset += reg_header.tam_reg;
-        reg_header.data = table->data[i];
-        reg_header.prox_reg = -1;
-
-        table->register_headers[i] = reg_header;
+        Register reg;
+        reg.removed = '0';
+        reg.tam_reg = format_len(table->format, raw_data[i]) + register_header_size;
+        reg.data = format_data(table->format, raw_data[i]);
+        reg.prox_reg = -1;
+        table_append_register(table, reg);
+        free(reg.data);
     }
 
-    table->num_fields = num_collumns;
-    table->num_reg = num_rows;
-    table->num_removed = 0;
-    table->next_byte_offset = next_byte_offset;
-    table->top = -1;
-    table->has_index = false;
-
-    return table;
-}
-
-Table *table_create_from_csv(CSV_handler *handler, char *format)
-{
-    return table_create(handler->data, format, handler->num_rows, handler->num_collumns);
-}
-
-void write_table_header(Table *table, char set)
-{
-    FILE *arquivo = table->f_pointer;
-
-    int64_t ini_offset = ftell(arquivo);
-    // printf("%d\n", ini_offset);
-    fseek(arquivo, 0, SEEK_SET);
-
-    fwrite(&set, sizeof(char), 1, arquivo);
-    fwrite(&(table->top), sizeof(table->top), 1, arquivo);
-    fwrite(&(table->next_byte_offset), sizeof(table->next_byte_offset), 1, arquivo);
-    fwrite(&(table->num_reg), sizeof(table->num_reg), 1, arquivo);
-    fwrite(&(table->num_removed), sizeof(table->num_removed), 1, arquivo);
-
-    fseek(arquivo, ini_offset, SEEK_SET);
-}
-
-void write_register_header(FILE *arquivo, Register reghead)
-{
-    fwrite(&(reghead.removed), sizeof(reghead.removed), 1, arquivo);
-    fwrite(&(reghead.tam_reg), sizeof(reghead.tam_reg), 1, arquivo);
-    fwrite(&(reghead.prox_reg), sizeof(reghead.prox_reg), 1, arquivo);
-}
-
-void table_save(Table *table, char *path)
-{
-    FILE *arquivo;
-
-    arquivo = fopen(path, "r_b");
-
-    if (arquivo == NULL)
-    {
-        printf("Erro ao abrir o arquivo.");
-        return;
-    }
-
-    table->f_pointer = arquivo;
-    write_table_header(table, '0');
-
-    for (int i = 0; i < table->data_size; i++)
-    {
-        Register reghead = table->register_headers[i];
-        write_register_header(arquivo, reghead);
-        fwrite((table->data[i]), sizeof(char), (reghead.tam_reg - register_header_size), arquivo);
-    }
-
+    
     write_table_header(table, '1');
-    fseek(arquivo, table_header_size, SEEK_SET);
+    table_reset_register_pointer(table);
 
-    fclose(arquivo);
-}
-
-void *temp_reg_data;
-Register read_register(FILE *file)
-{
-    Register reg;
-
-    reg.byte_offset = ftell(file);
-    fread(&(reg.removed), sizeof(reg.removed), 1, file);
-    fread(&(reg.tam_reg), sizeof(reg.tam_reg), 1, file);
-    // printf("%d\n", reg.tam_reg);
-    fread(&(reg.prox_reg), sizeof(reg.prox_reg), 1, file);
-
-    int data_size = reg.tam_reg - register_header_size;
-
-    free(temp_reg_data);
-    temp_reg_data = malloc(data_size);
-    fread(temp_reg_data, data_size, 1, file);
-    reg.data = temp_reg_data;
-
-    return reg;
-}
-
-Table *read_table_header(FILE *file, Table *table)
-{
-    fseek(file, 0, SEEK_SET);
-
-    table->pos_reg = -1;
-    char status = '1';
-
-    fread(&status, sizeof(char), 1, file);
-    if (status == '0')
-        return NULL;
-
-    fread(&(table->top), sizeof(table->top), 1, file);
-    fread(&(table->next_byte_offset), sizeof(table->next_byte_offset), 1, file);
-    fread(&(table->num_reg), sizeof(table->num_reg), 1, file);
-    fread(&(table->num_removed), sizeof(table->num_removed), 1, file);
+    // Seta os valores referentes ao indice de PK
+    table->index_loaded = false;
+    table->index.key = NULL;
+    table->index.byte_offset = NULL;
 
     return table;
 }
 
+// Essa função é apenas um wrapper da função table_create que funciona junto com a biblioteca
+// csv.c é colocada para o usuário como uma alternativa de uso (É a alternativa que nós escolhemos)
+Table *table_create_from_csv(char* path, CSV_handler *handler, char *format)
+{
+    return table_create(path, handler->data, format, handler->num_rows);
+}
+
+// Acessa um arquivo com os dados da tabela
 Table *table_access(char *path, char *format)
 {
     FILE *file = fopen(path, "r+b");
 
     if (file == NULL)
-    {
         return NULL;
-    }
 
+    // Inicializa a tabela assim como na função table create
     Table *table = malloc(sizeof(Table));
     table->f_pointer = file;
     table->format = decode_format(format);
-    // printf("%s", table->format);
-    if (!read_table_header(file, table))
-    {
+
+    // Checa o status da tabela para verificar a integridade do arquivo
+    fread(&(table->status), sizeof(char), 1, file);
+    if (table->status == '0')
         return NULL;
-    }
+
+    fread(&(table->top), sizeof(table->top), 1, file);
+    fread(&(table->next_byte_offset), sizeof(table->next_byte_offset), 1, file);
+
+    // Tive que fazer isso pois em alguns casos teste esse valor estava errado 
+    int64_t c = ftell(table->f_pointer);
+    fseek(table->f_pointer, 0, SEEK_END);
+    table->next_byte_offset = ftell(table->f_pointer);
+    fseek(table->f_pointer, c, SEEK_SET);
+
+    fread(&(table->num_reg), sizeof(table->num_reg), 1, file);
+    fread(&(table->num_removed), sizeof(table->num_removed), 1, file);
 
     table_reset_register_pointer(table);
-    table->has_index = false;
+    table->index_loaded = false;
     table->index.key = NULL;
     table->index.byte_offset = NULL;
+
     return table;
 }
 
-bool table_move_to_next_register(Table *table)
+
+// Reescreve ou escreve o cabeçalho da tabela
+void write_table_header(Table *table, char status)
 {
-    int64_t file_now = ftell(table->f_pointer);
-    fseek(table->f_pointer, 0, SEEK_END);
-    int64_t file_end = ftell(table->f_pointer);
-    fseek(table->f_pointer, file_now, SEEK_SET);
+    // Salva o offset de onde o arquivo estava antes de entrar na função
+    // Nesse caso é util pois essa função é também utilizada para 
+    // setar o status do arquivo
+    int64_t ini_offset = ftell(table->f_pointer);
 
-    // printf("%d %d\n", file_now, file_end);
+    // Movemos o ponteiro de arquivo para o inicio dele
+    fseek(table->f_pointer, 0, SEEK_SET);
 
-    if (file_now >= file_end)
-        return false;
+    // O char status é uma das entradas e indica o status da tablela
+    // caso o status seja '0' é a primeira coisa a ser modificada nela
+    // pois indica que a partir daqui ocorrerão outras modificações 
+    fputc('0', table->f_pointer);
+    table->status = '0';
 
-    table->current_register = read_register(table->f_pointer);
+    fwrite(&(table->top), sizeof(table->top), 1, table->f_pointer);
+    fwrite(&(table->next_byte_offset), sizeof(table->next_byte_offset), 1, table->f_pointer);
+    fwrite(&(table->num_reg), sizeof(table->num_reg), 1, table->f_pointer);
+    fwrite(&(table->num_removed), sizeof(table->num_removed), 1, table->f_pointer);
 
-    if (table->current_register.removed == '1')
-        return table_move_to_next_register(table);
-
-    table->pos_reg += 1;
-
-    return true;
-}
-
-bool table_move_to_previous_register(Table *table)
-{
-    if (table->pos_reg <= 0)
-        return false;
-
-    fseek(table->f_pointer, -table->current_register.tam_reg, SEEK_CUR);
-    table->current_register = read_register(table->f_pointer);
-
-    if (table->current_register.removed == '1')
+    // Caso o status seja 1 é necessário que ele seja modificado apenas no fim
+    // da escrita na tabela, pois apenas a partir daqui não haverão mais escritas
+    if (status == '1')
     {
-        return table_move_to_previous_register(table);
+        fseek(table->f_pointer, 0, SEEK_SET);
+        fputc('1', table->f_pointer);
+        table->status = '1';
     }
-    table->pos_reg -= 1;
 
+    // No final da execução o ponteiro do arquivo volta para onde ele estava antes
+    fseek(table->f_pointer, ini_offset, SEEK_SET);
+
+    return;
+}
+
+// Anexa um registro ao final da tabela
+bool table_append_register(Table *table, Register reg)
+{
+    int64_t ini_offset = ftell(table->f_pointer);
+
+    //espera-se que o cabeçalho do arquivo esteja com status '0'
+    if (table->status != '0')
+        return false;
+    
+    // Para anexar um registro é necessário estar no fim do arquivo
+    fseek(table->f_pointer, table->next_byte_offset, SEEK_SET);
+
+    // Escreve o registro
+    fwrite(&(reg.removed), sizeof(reg.removed), 1, table->f_pointer);
+    fwrite(&(reg.tam_reg), sizeof(reg.tam_reg), 1, table->f_pointer);
+    fwrite(&(reg.prox_reg), sizeof(reg.prox_reg), 1, table->f_pointer);
+
+    // Quando vamos anexar um registro no final do arquivo o tamanho
+    // do seu campo de dados é equivalente ao seu tamanho menos o tamanho de seu cabeçalho
+    fwrite(reg.data, sizeof(char), reg.tam_reg - register_header_size, table->f_pointer);
+    table->num_reg += 1;
+
+    // Ao anexar a tabela recebe um novo top
+    table->next_byte_offset = ftell(table->f_pointer);
+    write_table_header(table, '0');
+
+    // No final da execução o ponteiro do arquivo volta para onde ele estava antes
+    fseek(table->f_pointer, ini_offset, SEEK_SET);
     return true;
 }
 
+
+// As próximas duas funções permitem acessar os registros da tabela de forma sequencial
+// Usando a variavel current_register podemos ler e alterar os dados do registro
 void table_reset_register_pointer(Table *table)
 {
     fseek(table->f_pointer, table_header_size, SEEK_SET);
-    table->current_register.byte_offset = table_header_size;
+    table->current_register.byte_offset = ftell(table->f_pointer);
     table->current_register.tam_reg = 0;
-    table->pos_reg = -1;
 }
 
-char *decode_format(char *format)
-{
-    int tamanho = strlen(format);
-    char *tipos = (char *)malloc(tamanho * sizeof(char));
-    int contador = 0;
+// Essa variavél serve para armazenar os dados do current_register que podem ser de 
+// tamanho variável, ela é liberada toda vez que movemos para o próximo registrador
+// ou seja, não precisamos nos preocupar com ela
+void *temp_reg_data = NULL;
 
-    for (int i = 0; i < tamanho; i++)
+// Função que lê o próximo registrador e salva na variável next_register
+bool table_move_to_next_register(Table *table)
+{
+    // offset de retorno do f_pointer quando a função terminar de ser executada
+    int64_t ini_offset = ftell(table->f_pointer);
+
+    // verifica a posição do proximo registrador
+    int64_t next_register_offset = table->current_register.byte_offset + table->current_register.tam_reg;
+
+    // printf("%d %d\n",next_register_offset, table->next_byte_offset);
+    // Caso o proximo registrador esteja no final do arquivo a função retorna false
+    if (next_register_offset >= table->next_byte_offset)
     {
-        if (format[i] == '%' && i < tamanho - 1)
-        {
-            tipos[contador] = format[i + 1];
-            contador++;
-        }
+        // Retorna o ponteiro do arquivo para onde ele estava antes da função iniciar
+        fseek(table->f_pointer, ini_offset, SEEK_SET);
+        return false;
     }
 
-    tipos[contador] = '\0';
-    return tipos;
+    // Acessa a posição do proximo registrador
+    fseek(table->f_pointer, next_register_offset, SEEK_SET);
+
+    Register reg;
+
+    // Lê os dados do proximo registrador
+    reg.byte_offset = ftell(table->f_pointer);
+    fread(&(reg.removed), sizeof(reg.removed), 1, table->f_pointer);
+    fread(&(reg.tam_reg), sizeof(reg.tam_reg), 1, table->f_pointer);
+    fread(&(reg.prox_reg), sizeof(reg.prox_reg), 1, table->f_pointer);
+
+    int data_size = reg.tam_reg - register_header_size;
+
+    if (temp_reg_data != NULL)
+        free(temp_reg_data);
+    
+    // Aloca dados conforme o necessário
+    temp_reg_data = malloc(data_size);
+    fread(temp_reg_data, sizeof(char), data_size, table->f_pointer);
+    reg.data = temp_reg_data;
+
+    // Seta o current_register pra ser esse registro definido ali em cima
+    table->current_register = reg;
+
+    // Caso o registro esteja removido ele move para o próximo
+    if (table->current_register.removed == '1')
+        return table_move_to_next_register(table);
+
+
+    // Retorna o ponteiro do arquivo para onde ele estava antes da função iniciar
+    fseek(table->f_pointer, ini_offset, SEEK_SET);
+    return true;
 }
 
-void *format_data(char *format, char **data)
+
+// Reescreve o registro que está sendo atualmente acessado
+bool rewrite_current_register(Table *table)
 {
-    void *formated_data;
-    // printf("%d\n", format_len(format, data));
-
-    formated_data = (void *)calloc(format_len(format, data) + 1, sizeof(void *));
-    char *aux_ptr = format;
-    int counter = 0;
-    int size_ptr = 0;
-
-    while (*aux_ptr != '\0')
-    {
-        if (*aux_ptr == 'd')
-        {
-            if (strcmp(data[counter], "$") == 0 || strcmp(data[counter], "NULO") == 0)
-            {
-                int null_value = -1;
-                memcpy(formated_data + size_ptr, (void *)(&null_value), 4);
-            }
-            else
-            {
-                int value = atoi(data[counter]);
-                memcpy(formated_data + size_ptr, (void *)(&value), 4);
-            }
-
-            counter += 1;
-            size_ptr += 4;
-        }
-        else if (*aux_ptr == 's')
-        {
-            int str_size = 0;
-
-            if (strcmp(data[counter], "$") != 0 && strcmp(data[counter], "NULO") != 0)
-            {
-                str_size = strlen(data[counter]);
-                memcpy(formated_data + size_ptr, &str_size, 4);
-                memcpy(formated_data + size_ptr + 4, data[counter], str_size);
-            }
-
-            counter += 1;
-            size_ptr += str_size + 4;
-        }
-        aux_ptr++;
-    }
-
-    return formated_data;
+    fseek(table->f_pointer, -table->current_register.tam_reg, SEEK_CUR);
+    //write_current_register(table->f_pointer, table->current_register);
+    fseek(table->f_pointer, -register_header_size, SEEK_CUR);
+    return true;
 }
 
-int format_len(char *format, char **data)
-{
-    int size = 0;
-    char *aux_ptr = format;
-    int counter = 0;
 
-    while (*aux_ptr != '\0')
-    {
-        // printf("%c\n", *aux_ptr);
-        if (*aux_ptr == 'd')
-        {
-            size += 4;
-            counter += 1;
-        }
-        else if (*aux_ptr == 's')
-        {
-            if (strcmp(data[counter], "$") == 0 || strcmp(data[counter], "NULO") == 0)
-            {
-                counter += 1;
-                size += 4;
-                aux_ptr++;
-                continue;
-            }
-            // printf("%s\n", data[counter]);
-            // printf("%d\n", strlen(data[counter]));
-            size += strlen(data[counter]) + 4;
-            counter += 1;
-        }
+// A seguinte função é usada para realizar uma busca dentro da tabela, ela vai procurar
+// os registros que batem com os valores pedidos para as chaves especificas
 
-        aux_ptr++;
-    }
-
-    return size;
-}
-
-void *table_get_current_register_data_by_index(Table *table, int index)
-{
-    int size = 0;
-    char *aux_ptr = table->format;
-    // printf("%s\n", table->format);
-    int counter = 0;
-
-    void *ret_val;
-
-    while (*aux_ptr != '\0')
-    {
-        // printf("%c\n", *aux_ptr);
-        if (*aux_ptr == 'd')
-        {
-            if (counter == index)
-            {
-                void *data = table->current_register.data + size;
-                ret_val = calloc(4, 1);
-                memcpy(ret_val, data, 4);
-                return ret_val;
-            }
-
-            size += 4;
-        }
-        else if (*aux_ptr == 's')
-        {
-
-            void *data = table->current_register.data + size;
-            // printf("%d\n", *((int32_t*)(data)));
-
-            if (counter == index)
-            {
-                ret_val = calloc(*((int32_t *)(data)) + 1, 1);
-                memcpy(ret_val, data + 4, *((int32_t *)(data)));
-                return ret_val;
-            }
-
-            size += *((int32_t *)data) + 4;
-        }
-        counter++;
-        aux_ptr++;
-    }
-
-    return NULL;
-}
-
+// Essa variável decide o estado da busca dos intens dentro da tabela
+// 0 : Uma busca não esta em progresso ou a busca com indice retornou false
+// 1 : Uma busca acabou de ser realizada usando indice e foi bem sucessedida
+// 2 : Uma busca está em progresso
 int search_state = 0;
+
+// A seguinte função SEMPRE deve ser usada dentro de um laço pois ela envolve estados
+// while (table_search_for_matches(...)) {/* Seu código aqui*/}
 bool table_search_for_matches(Table *table, void **data, int *indexes, int num_parameters)
 {
     if (search_state == 0)
     {
+        // Prepara o ponteiro do current_register para uma nova busca
         table_reset_register_pointer(table);
 
+        // Checa se o indice da PK está presente entre as chaves 
+        // e se o arquivo de indices está carregado
         for (int i = 0; i < num_parameters; i++)
-            if (indexes[i] == 0 && table->has_index)
-            {
+            if (indexes[i] == 0 && table->index_loaded)
+            {  
+                // caso esteja ele faz uma busca usando o indice
                 bool sr = search_using_index(table, data[i]);
+                
+                // caso a busca tenha dado certo ele muda para o estado 1 e retorna verdadeiro
+                // para que a função execute um laço uma vez antes de sair dele
                 if (sr)
                     search_state = 1;
 
                 return sr;
             }
 
+        // Caso não seja possível usar o indice a busca é feita de item por item
+        // Muda-se o estado de busca para 2
         search_state = 2;
     }
     else if (search_state == 1)
     {
-        // printf("passou aqui?\n");
+        // Reseta a busca e retorna falso para sair do laço
         search_state = 0;
         return false;
     }
+    // Mesma lógica para a funcionalidade 2 que acessa todos on indices
     while (table_move_to_next_register(table))
     {
         bool match = true;
 
         for (int i = 0; i < num_parameters; i++)
         {
-            void *v = table_get_current_register_data_by_index(table, indexes[i]);
+            // Aqui ele decodifica os dados empacotados retornando o valor presente na coluna
+            // desejada
+            void *v = get_data_in_index(table->current_register.data, table->format, indexes[i]);
             void *value = v;
             void *data_temp = data[i];
 
+            // Caso o valor da coluna seja do tipo string é feita uma comparação de strings
             if (table->format[indexes[i]] == 's')
             {
-                // printf("a:%s| b:%s|\n", value, data_temp);
                 if (strcmp(data_temp, value) != 0)
                 {
                     match = false;
                     break;
                 }
             }
+            // Caso seja do tipo inteiro, é feita uma comparação de inteiros
             else if (table->format[indexes[i]] == 'd')
             {
-                // printf("a:%d b:%d\n", *(int32_t*)value, *(int32_t*)data[i]);
                 if (*(int32_t *)data[i] != *(int32_t *)value)
                 {
                     match = false;
@@ -415,98 +328,78 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
                 }
             }
 
+            // Liberamos a memoria alocada para não causar um leak
             free(v);
         }
 
+        // Caso tenha sido encontrado algo o retorno é true, caso contrário ele só 
+        // checa o próximo registro
         if (match)
             return true;
     }
 
+    // Chegamos ao fim do arquivo, aqui resetamos o estado da busca e interrompemos o laço
     search_state = 0;
-    // printf("passou aqyu efgbaseyuz\n");
-
     return false;
 }
 
-void free_void_list(void ***collumn, int items)
-{
-    void **col = *(collumn);
-    for (int j = 0; j < items; j++)
-    {
-        free(col[j]);
-    }
-    free(col);
-    *(collumn) = NULL;
-}
-
-void table_free(Table **tab)
-{
-    if ((*tab)->f_pointer)
-        fclose((*tab)->f_pointer);
-    if ((*tab)->register_headers)
-    {
-        for (int i = 0; i < (*tab)->num_reg; i++)
-        {
-            free((*tab)->register_headers);
-            (*tab)->register_headers = NULL;
-        }
-    }
-    if ((*tab)->data)
-        free_void_list(&((*tab)->data), (*tab)->data_size);
-    free(*tab);
-    (*tab) = NULL;
-}
-
+// Cria um indice de chave, de tamanho key_size, na coluna key_row 
 bool table_create_index(Table *table, char *path, int key_row, int key_size)
 {
-    FILE *arquivo;
-    arquivo = fopen(path, "wb");
+    // offset de retorno do f_pointer quando a função terminar de ser executada
+    int64_t ini_offset = ftell(table->f_pointer);
 
-    if (arquivo == NULL)
-    {
-        printf("Erro ao abrir o arquivo.");
+    // Código padrão para checar a integridade do arquivo
+    FILE *file;
+    file = fopen(path, "w+b");
+
+    if (file == NULL)
         return false;
-    }
-
+    
+    // Resetamos o ponteiro de registro da tabela para poder percorrer ela por inteiro
     table_reset_register_pointer(table);
-    fwrite("0", sizeof(char), 1, arquivo);
+    // Setamos o status do arquivo como 0 pois estamos alterando ele
+    fseek(file, 0, SEEK_SET);
+    fputc('0', file);
 
+    // Movemos por todos os registros válidos da tabela, salvando o valor de sua chave e 
+    // seu byte offset
     while (table_move_to_next_register(table))
     {
-        // printf("oi\n");
-        // printf("%d\n", *((int*)table->current_register.data));
-        fwrite(table->current_register.data + key_row * sizeof(char), sizeof(char), key_size, arquivo);
-        fwrite(&(table->current_register.byte_offset), sizeof(table->current_register.byte_offset), 1, arquivo);
+        printf("%d ", (int32_t*)(table->current_register.data));
+        printf("%lld\n", table->current_register.byte_offset);
+        fwrite(get_data_in_index(table->current_register.data, table->format, key_row), sizeof(char), key_size, file);
+        fwrite(&(table->current_register.byte_offset), sizeof(int64_t), 1, file);
     }
 
-    table_reset_register_pointer(table);
+    // Setamos o status do arquivo como 1 pois não estamos mais usando ele
+    fseek(file, 0, SEEK_SET);
+    fputc('1', file);
+    fflush(file);
 
-    fseek(arquivo, 0, SEEK_SET);
-    fwrite("1", sizeof(char), 1, arquivo);
+    // Fechando o arquivo
+    fclose(file);
 
-    fclose(arquivo);
+    // Carregamos o arquivo ao usar essa função para evitar repetição de código
+    // Criamos uma função de load index para que o usuário carregue um arquivo 
+    // de indice já existente caso ele queira
+    //table_load_index(table, path, key_size);
 
-    table->index.key_size = key_size;
-    table->index.key_row = key_row;
+    // Retorna o ponteiro do arquivo para onde ele estava antes da função iniciar
+    fseek(table->f_pointer, ini_offset, SEEK_SET);
 
     return true;
 }
 
-bool table_load_index(Table *table, char *path)
+bool table_load_index(Table *table, char *path, int key_size)
 {
-    FILE *arquivo;
-    arquivo = fopen(path, "r+b");
+    FILE *file;
+    file = fopen(path, "r+b");
 
-    if (arquivo == NULL)
-    {
-        printf("Erro ao abrir o arquivo.");
+    if (file == NULL)
         return false;
-    }
 
-    fseek(arquivo, 0, SEEK_SET);
-
-    fwrite("0", sizeof(char), 1, arquivo);
-    fseek(arquivo, 1, SEEK_SET);
+    fputc('0', file);
 
     if (table->index.key != NULL)
     {
@@ -521,9 +414,10 @@ bool table_load_index(Table *table, char *path)
     }
 
     table->index.key = malloc(sizeof(void *) * table->num_reg);
+    table->index.key_size = key_size;
+
     for (int i = 0; i < table->num_reg; i++)
     {
-        // printf("%d\n", table->index.key_size);
         table->index.key[i] = malloc(table->index.key_size);
     }
 
@@ -531,28 +425,36 @@ bool table_load_index(Table *table, char *path)
 
     for (int i = 0; i < table->num_reg; i++)
     {
-        // printf("%d\n", i);
-        fread((table->index.key[i]), sizeof(char), table->index.key_size, arquivo);
-        // printf("%d\n", *((int32_t *)(table->index.key[i])));
-        fread(&(table->index.byte_offset[i]), sizeof(char), 8, arquivo);
+        fread((table->index.key[i]), sizeof(char), table->index.key_size, file);
+        //printf("%d ", *((int32_t *)(table->index.key[i])));
+        fread(&(table->index.byte_offset[i]), sizeof(int64_t), 1, file);
+        //printf("%lld\n", table->index.byte_offset[i]);
     }
 
-    fseek(arquivo, 0, SEEK_SET);
-    fwrite("1", sizeof(char), 1, arquivo);
-    fclose(arquivo);
+    fseek(file, 0, SEEK_SET);
+    fputc('1', file);
+    fclose(file);
 
-    table->has_index = true;
+    table->index_loaded = true;
     return true;
 }
 
-bool rewrite_current_register(Table *table)
+bool search_using_index(Table *table, void *key)
 {
-    fseek(table->f_pointer, -table->current_register.tam_reg, SEEK_CUR);
-    write_register_header(table->f_pointer, table->current_register);
-    fseek(table->f_pointer, -register_header_size, SEEK_CUR);
+    for (int i = 0; i < table->num_reg; i++)
+    {
+        printf("oi\n");
+        printf("%d %d\n", *((int32_t*)(table->index.key[i])), *((int32_t*)key));
+        if (*((int32_t *)(table->index.key[i])) == *((int32_t *)key))
+        {
+            fseek(table->f_pointer, table->index.byte_offset[i], SEEK_SET);
+            return table_move_to_next_register(table);
+        }
+    }
 
-    return true;
+    return false;
 }
+
 
 bool table_delete_current_register(Table *table)
 {
@@ -566,7 +468,6 @@ bool table_delete_current_register(Table *table)
 
     table->num_removed += 1;
     table->num_reg -= 1;
-    table->pos_reg -= 1;
 
     rewrite_current_register(table);
     write_table_header(table, '1');
@@ -574,21 +475,7 @@ bool table_delete_current_register(Table *table)
     return true;
 }
 
-bool search_using_index(Table *table, void *key)
-{
-    for (int i = 0; i < table->num_reg; i++)
-    {
-        // printf("oi\n");
-        // printf("%d %d\n", *((int32_t*)(table->index.key[i])), *((int32_t*)key));
-        if (*((int32_t *)(table->index.key[i])) == *((int32_t *)key))
-        {
-            fseek(table->f_pointer, table->index.byte_offset[i], SEEK_SET);
-            return table_move_to_next_register(table);
-        }
-    }
 
-    return false;
-}
 
 int64_t find_ptr_to_best_fit(Table *table, int tam)
 {
@@ -659,8 +546,6 @@ bool table_insert_new_register(Table *table, char **row)
         //printf("%d\n", next);
 
         int64_t current = next;
-        if (cur_offset > current)
-            table->pos_reg += 1;
 
         fseek(table->f_pointer, next + 1, SEEK_SET);
         fread(&tam_reg, sizeof(int), 1, table->f_pointer);
@@ -680,13 +565,13 @@ bool table_insert_new_register(Table *table, char **row)
 
     fseek(table->f_pointer, best_fit, SEEK_SET);
 
-    Register new_register;
-    new_register.data = data;
-    new_register.prox_reg = -1;
-    new_register.removed = '0';
-    new_register.tam_reg = tam_reg;
+    // Register new_register;
+    // new_register.data = data;
+    // new_register.prox_reg = -1;
+    // new_register.removed = '0';
+    // new_register.tam_reg = tam_reg;
 
-    write_register_header(table->f_pointer, new_register);
+    //write_register_header(table->f_pointer, new_register);
     fwrite(data, sizeof(char), data_size - register_header_size, table->f_pointer);
 
     int remainig_space = tam_reg - data_size;
@@ -703,4 +588,12 @@ bool table_insert_new_register(Table *table, char **row)
     fseek(table->f_pointer, cur_offset, SEEK_SET);
 
     return true;
+}
+
+void table_free(Table **tab)
+{
+    if ((*tab)->f_pointer)
+        fclose((*tab)->f_pointer);
+    free(*tab);
+    (*tab) = NULL;
 }

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Iinc
+CFLAGS = -Iinc -g -Wall -Wextra  -std='c99' #-pedantic
 SRC_DIR = src
 INC_DIR = inc
 BIN_DIR = bin
@@ -15,11 +15,11 @@ all: $(TARGET)
 
 # Compilar os arquivos objeto
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@ -g -Wall -Wextra -pedantic -std='c99'
+	$(CC) $(CFLAGS) -c $< -o $@ 
 
 # Linkar os objetos para gerar o executável
 $(TARGET): $(OBJ_FILES)
-	$(CC) $^ -o $@ -g -Wall -Wextra -pedantic -std='c99'
+	$(CC) $^ -o $@ 
 
 # Executar o programa
 run:

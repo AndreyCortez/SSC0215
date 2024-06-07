@@ -1,4 +1,4 @@
-#include <csv.h>
+#include "csv.h"
 
 const char *null_field = "$";
 
@@ -39,8 +39,13 @@ char *paxtok(char *str, char *seps)
     return pos;
 }
 
-CSV_handler *csv_parse(FILE *file, bool has_header)
+CSV_handler *csv_parse(char* path, bool has_header)
 {
+    FILE *file = fopen(path, "r");
+    
+    if (file == NULL)
+        return NULL;
+
     char line[MAX_LINE_LENGTH];
     char *token;
 
@@ -75,8 +80,10 @@ CSV_handler *csv_parse(FILE *file, bool has_header)
         data_size -= 1;
 
     CSV_handler *csv_handler;
+
     csv_handler = malloc(sizeof(CSV_handler));
 
+    csv_handler->f_pointer = file;
     csv_handler->data = (char ***)malloc(sizeof(char **) * data_size);
 
     for (int i = 0; i < data_size; i++)
@@ -241,7 +248,7 @@ void free_char_list(char ***collumn, int items)
 
 void csv_free_handle(CSV_handler **handler)
 {
-
+    fclose((*handler)->f_pointer);
     if ((*handler)->data != NULL)
         free_matrix(&((*handler)->data), (*handler)->num_rows, (*handler)->num_collumns);
     if ((*handler)->header != NULL)
