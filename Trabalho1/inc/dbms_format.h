@@ -9,4 +9,4 @@
 void *format_data(char *format, char **data);
 int format_len(char *format, char **data);
 char *decode_format(char *format);
-void *get_data_in_index(void *data, char *format, int index);
+void *get_data_in_collumn(void *data, char *format, int collumn);

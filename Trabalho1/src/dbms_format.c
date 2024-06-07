@@ -99,13 +99,12 @@ char *decode_format(char *format)
     return tipos;
 }
 
-void *get_data_in_index(void *data, char *format, int index)
+void *get_data_in_collumn(void *data, char *format, int index)
 {
     int size = 0;
     char *aux_ptr = format;
 
     int counter = 0;
-
     void *ret_val;
 
     while (*aux_ptr != '\0')
@@ -115,7 +114,7 @@ void *get_data_in_index(void *data, char *format, int index)
             if (counter == index)
             {
                 void *_d = (char*)data + size;
-                printf("%d\n", _d);
+                //printf("%d %d %d\n", *((int32_t *)_d), *((int32_t *)data), size);
                 ret_val = calloc(4, 1);
                 memcpy(ret_val, _d, 4);
                 return ret_val;

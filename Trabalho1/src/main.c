@@ -6,41 +6,30 @@
 // Francyélio de Jesus Campos Lima - 13676537
 
 // Função ajudante para printar o registro no formato correto
-void printar_registro_formatado(void *data)
+void printar_registro_formatado(void *data, char *format)
 {
-    // Ponteiro de void presente dentro do registro, guarda todos os dados
-    // conforme a especificação
-    void *aux_data = data;
-
-    aux_data += sizeof(int) * 2;
-    int32_t tam_nome;
     
-    memcpy(&tam_nome, aux_data, sizeof(tam_nome));
-    aux_data += sizeof(tam_nome);
-
-    if (tam_nome != 0)
-        printf("Nome do Jogador: %.*s\n", tam_nome, (char *)aux_data);
+    char *str = (char *)get_data_in_collumn(data, format, 2);
+    if (*str != '\0')
+        printf("Nome do Jogador: %s\n", str);
     else
         printf("Nome do Jogador: SEM DADO\n");
 
-    aux_data += tam_nome;
-    memcpy(&tam_nome, aux_data, sizeof(tam_nome));
-    aux_data += sizeof(tam_nome);
-
-    if (tam_nome != 0)
-        printf("Nacionalidade do Jogador: %.*s\n", tam_nome, (char *)aux_data);
+    free(str);
+    str = (char *)get_data_in_collumn(data, format, 3);
+    if (*str != '\0')
+        printf("Nacionalidade do Jogador: %s\n", str);
     else
         printf("Nacionalidade do Jogador: SEM DADO\n");
 
-    aux_data += tam_nome;
-    memcpy(&tam_nome, aux_data, sizeof(tam_nome));
-    aux_data += sizeof(tam_nome);
-
-    if (tam_nome != 0)
-        printf("Clube do Jogador: %.*s\n", tam_nome, (char *)aux_data);
+    free(str);
+    str = (char *)get_data_in_collumn(data, format, 4);
+    if (*str != '\0')
+        printf("Clube do Jogador: %s\n", str);
     else
         printf("Clube do Jogador: SEM DADO\n");
 
+    free(str);
     printf("\n");
 }
 
@@ -226,7 +215,7 @@ int main()
         while (table_move_to_next_register(table))
         {
             void *current_data = table->current_register.data;
-            printar_registro_formatado(current_data);
+            printar_registro_formatado(current_data, table->format);
             registers_read += 1;
         }
 
@@ -277,7 +266,7 @@ int main()
             // a PK e assim faz a busca usando o indice
             while (table_search_for_matches(table, (void **)valor_parametros, parametros, num_parametros))
             {
-                printar_registro_formatado(table->current_register.data);
+                printar_registro_formatado(table->current_register.data, table->format);
                 num_validos++;
             }
 
