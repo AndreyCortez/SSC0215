@@ -26,7 +26,7 @@ run:
 	./$(TARGET)
 
 check_memory:
-	valgrind --leak-check=full ./programaTrab -s
+	valgrind --leak-check=full ./programaTrab -s --show-leak-kinds=all
 
 # Limpar os arquivos objeto e o executável
 clean:

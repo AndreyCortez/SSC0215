@@ -1,6 +1,6 @@
 #include "dbms_register.h"
 
-bool write_register(Register reg, FILE *file, char* format)
+bool register_write(Register reg, FILE *file, char *format)
 {
     fseek(file, reg.byte_offset, SEEK_SET);
 
@@ -28,7 +28,7 @@ bool write_register(Register reg, FILE *file, char* format)
     return true;
 }
 
-Register read_register(int64_t offset, FILE *file)
+Register register_read(int64_t offset, FILE *file)
 {
     // offset de retorno do f_pointer quando a função terminar de ser executada
     int64_t ini_offset = ftell(file);
@@ -54,8 +54,9 @@ Register read_register(int64_t offset, FILE *file)
 
 // O unico campo alocado dinamicamente dentro da estrutura de registro é
 // o data e por isso precisa ser desalocado ao terminar de usar o registro
-void free_register(Register* reg)
+void register_free(Register *reg)
 {
     if (reg->data != NULL)
         free(reg->data);
+    reg->data = NULL;
 }

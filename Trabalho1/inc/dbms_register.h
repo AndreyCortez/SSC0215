@@ -20,6 +20,6 @@ typedef struct
     void *data;
 } Register;
 
-bool write_register(Register reg, FILE *file, char *format);
-Register read_register(int64_t offset, FILE *file);
-void free_register(Register* reg);
+bool register_write(Register reg, FILE *file, char *format);
+Register register_read(int64_t offset, FILE *file);
+void register_free(Register *reg);

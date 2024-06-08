@@ -14,7 +14,8 @@ typedef struct
     int64_t* byte_offset;
     int key_size;
     int key_row;
+    int num_reg;
 } Index;
 
-// Esse arquivo não possui funções mas foi deixado aqui para 
-// quando houverem implementações futuras envolvendo arvore B
+
+void index_free(Index* index);
