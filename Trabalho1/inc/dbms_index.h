@@ -15,3 +15,6 @@ typedef struct
     int key_size;
     int key_row;
 } Index;
+
+// Esse arquivo não possui funções mas foi deixado aqui para 
+// quando houverem implementações futuras envolvendo arvore B

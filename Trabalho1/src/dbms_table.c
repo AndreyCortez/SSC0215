@@ -90,7 +90,8 @@ Table *table_access(char *path, char *format)
     fread(&(table->top), sizeof(table->top), 1, file);
     fread(&(table->next_byte_offset), sizeof(table->next_byte_offset), 1, file);
 
-    // Tive que fazer isso pois em alguns casos teste esse valor estava errado 
+    // Tive que fazer isso pois em alguns casos teste esse valor 
+    // foi inicializado errado 
     int64_t c = ftell(table->f_pointer);
     fseek(table->f_pointer, 0, SEEK_END);
     table->next_byte_offset = ftell(table->f_pointer);
@@ -186,17 +187,13 @@ void table_reset_register_pointer(Table *table)
 }
 
 
+// Move o registro atual da tabela para um registro especifico
 bool table_goto_register_on_offset(Table *table, int64_t offset)
 {
     table->current_register.byte_offset = offset;
     table->current_register.tam_reg = 0;
     return table_move_to_next_register(table);
 }
-
-// Essa variavél serve para armazenar os dados do current_register que podem ser de 
-// tamanho variável, ela é liberada toda vez que movemos para o próximo registrador
-// ou seja, não precisamos nos preocupar com ela
-void *temp_reg_data = NULL;
 
 // Função que lê o próximo registrador e salva na variável next_register
 bool table_move_to_next_register(Table *table)
@@ -216,29 +213,10 @@ bool table_move_to_next_register(Table *table)
         return false;
     }
 
-    // Acessa a posição do proximo registrador
-    fseek(table->f_pointer, next_register_offset, SEEK_SET);
-
-    Register reg;
-
-    // Lê os dados do proximo registrador
-    reg.byte_offset = ftell(table->f_pointer);
-    fread(&(reg.removed), sizeof(reg.removed), 1, table->f_pointer);
-    fread(&(reg.tam_reg), sizeof(reg.tam_reg), 1, table->f_pointer);
-    fread(&(reg.prox_reg), sizeof(reg.prox_reg), 1, table->f_pointer);
-
-    int data_size = reg.tam_reg - register_header_size;
-
-    if (temp_reg_data != NULL)
-        free(temp_reg_data);
-    
-    // Aloca dados conforme o necessário
-    temp_reg_data = malloc(data_size);
-    fread(temp_reg_data, sizeof(char), data_size, table->f_pointer);
-    reg.data = temp_reg_data;
-
-    // Seta o current_register pra ser esse registro definido ali em cima
-    table->current_register = reg;
+    // Libera a memoria do registro atual, caso esteja usando alguma
+    free_register(&(table->current_register));
+    // lê o registro indicado no next_register_offset
+    table->current_register = read_register(next_register_offset, table->f_pointer);
 
     // Caso o registro esteja removido ele move para o próximo
     if (table->current_register.removed == '1')
@@ -344,18 +322,74 @@ bool table_delete_current_register(Table *table)
 
     // Começa a alterar o registro  
     table->current_register.removed = '1';
+    table->current_register.prox_reg = -1;
     
-    int64_t aux = table->top;
+    // Registros para ajudarem na inserção na lista
+    Register before, next;
+    before.byte_offset = -1;
+    next.byte_offset = -1;
+    
+    // Caso 0: A lista não possui itens
+    if (table->top < 0)
+        table->top = table->current_register.byte_offset;
+    else
+    {
+        before = read_register(table->top, table->f_pointer);
 
-    table->top = table->current_register.byte_offset;
-    table->current_register.prox_reg = aux;
+        // Caso 1: Inserir no inicio da lista     
+        if (before.tam_reg >= table->current_register.tam_reg)
+        {
+            table->top = table->current_register.byte_offset;
+            table->current_register.prox_reg = before.byte_offset;
+            goto inserted;
+        }
+        if (before.prox_reg < 0)
+        {
+            before.prox_reg = table->current_register.byte_offset;
+            goto inserted;
+        }
 
+        next = read_register(before.prox_reg, table->f_pointer);
+
+        // Caso 2: Inserir no meio da lista
+        while (next.prox_reg > 0)
+        {
+            if (next.tam_reg > table->current_register.tam_reg)
+            {
+                before.prox_reg = table->current_register.byte_offset;
+                table->current_register.prox_reg = next.byte_offset;
+                goto inserted;
+            }            
+            
+            free_register(&before);
+            before = next;
+            next = read_register(next.prox_reg, table->f_pointer);
+        }
+
+        // Caso 3: Inserir no final da lista
+        if (next.tam_reg <= table->current_register.tam_reg)
+            next.prox_reg = table->current_register.byte_offset;    
+        else
+        {
+            before.prox_reg = table->current_register.byte_offset;
+            table->current_register.prox_reg = next.byte_offset;
+        }  
+    }
+
+inserted:
+
+    if (before.byte_offset != -1) write_register(before, table->f_pointer, table->format);
+    if (next.byte_offset != -1) write_register(next, table->f_pointer, table->format);
+    write_register(table->current_register, table->f_pointer, table->format);
+    
     table->num_removed += 1;
     table->num_reg -= 1;
 
-    write_register(table->current_register, table->f_pointer, table->format);
     write_table_header(table, '1');
-
+    
+    free_register(&before);
+    free_register(&next);
+    
     return true;
 }
 
@@ -606,6 +640,7 @@ bool search_using_index(Table *table, void *key)
 // Função usada para liberar a estrutura da tabela
 void table_free(Table **tab)
 {
+    free_register(&((*tab)->current_register));
     if ((*tab)->f_pointer)
         fclose((*tab)->f_pointer);
     free(*tab);

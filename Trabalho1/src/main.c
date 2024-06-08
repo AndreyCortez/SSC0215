@@ -389,6 +389,36 @@ int main()
         binarioNaTela(bin_path);
         binarioNaTela(index_bin_path);
     }
+    // Função de debug pra imprimir os registros removidos;
+    else if (command == -1)
+    {
+        char bin_path[100];
+        char index_bin_path[100];
+
+        scanf("%s %s", bin_path, index_bin_path);
+        Table *table = table_access(bin_path, format);
+        table_create_index(table, index_bin_path, 0, 4);
+
+        if (table == NULL)
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return 0;
+        }
+
+        Register reg = read_register(table->top, table->f_pointer);
+        while (reg.prox_reg > 0)
+        {
+            printf("%d\n", reg.tam_reg);
+            reg = read_register(reg.prox_reg, table->f_pointer);
+        }
+        printf("%d\n", reg.tam_reg);
+        
+
+        table_free(&table);
+
+        binarioNaTela(bin_path);
+        binarioNaTela(index_bin_path);
+    }
 
     return 0;
 }
