@@ -173,27 +173,38 @@ int32_t bnode_search_key(Bnode* bnode, int key){
     return -1;
 }
 
+int32_t bnode_insert_pos(Bnode* bnode, int key){
+    int *v = bnode->key;
+    int tam = bnode->num_keys; 
+
+    for(int i = 0; i < tam; i++)
+    {
+        if(v[i] >= key)
+            return i;
+    }
+    
+    return tam;
+}
+
 // Dividir o vetor de chaves
-int split(Bnode *new, Bnode* page, Bnode* newpage, Bnode *promoted, int pos)
+int split(Bnode* page, Bnode* newpage, Bnode *promoted)
 {
+    int pos = (MAX_KEYS / 2) - 1;
     int chaves[MAX_KEYS + 1];
     int64_t refs[MAX_KEYS + 1];
     int childs[MAX_KEYS + 2];
 
     newpage->num_keys = 0;
-    page->num_keys = 0;
+    page->num_keys = (MAX_KEYS / 2) - 1;
 
-    for(int i = 0; i < pos; i++)
+    for(int i = 0; i <= pos; i++)
     {
         chaves[i] = page->key[i];
         refs[i] = page->byte_offset[i];
         childs[i] = page->next_rrn[i];
     }
 
-    chaves[pos] = new->key[0];
-    refs[pos] = new->byte_offset[0];
-    childs[pos] = page->next_rrn[pos];
-    childs[pos + 1] = new->cur_rrn;
+    childs[pos + 1] = page->next_rrn[pos + 1];
 
     for(int i = pos; i < MAX_KEYS; i++)
     {
@@ -202,27 +213,20 @@ int split(Bnode *new, Bnode* page, Bnode* newpage, Bnode *promoted, int pos)
         childs[i + 2] = page->next_rrn[i + 1];
     }
 
-    int mid = (MAX_KEYS + 1) / 2;
-    promoted->key[0] = chaves[mid];
-    promoted->byte_offset[0] = refs[mid];
+    promoted->key[0] = page->key[pos];
+    promoted->byte_offset[0] = page->byte_offset[pos];
     promoted->cur_rrn = newpage->cur_rrn;
 
-    for(int i = 0; i < mid; i++)
-    {
-        page->key[i] = chaves[i];
-        page->byte_offset[i] = refs[i];
-        page->next_rrn[i] = childs[i];
-        page->num_keys++;
-    }
-    page->next_rrn[mid] = childs[mid];
+    page->next_rrn[pos] = childs[pos];
 
-    for(int i = mid + 1, j = 0; i <= MAX_KEYS; i++, j++)
+    for(int i = pos + 1, j = 0; i <= MAX_KEYS; i++, j++)
     {
         newpage->key[j] = chaves[i];
         newpage->byte_offset[j] = refs[i];
         newpage->next_rrn[j] = childs[i];
         newpage->num_keys++;
     }
+
     newpage->next_rrn[newpage->num_keys] = childs[MAX_KEYS + 1];
 
     for(int i = page->num_keys; i < MAX_KEYS - 1; i++)
@@ -264,19 +268,10 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
     {
         // Ler a pagina atual e procurar a posicao certa
         page = bnode_read(btree, inserted->cur_rrn);
-        pos = bnode_search_key(page, inserted->key[0]);
-
-
-        // Caso ja exista essa chave, finaliza a operacao
-        if(pos != -1) 
-        {
-            free(page);
-            return false;
-        }
+        pos = bnode_insert_pos(page, inserted->key[0]);
 
         int32_t cur_rrn = inserted->cur_rrn;
         // Recursivamente verifica se eh possivel guardar a pagina na posicao atual da recursao
-        pos = page->num_keys;
         
         //printf("%d\n", pos);
         if (pos == MAX_KEYS - 1)
@@ -292,41 +287,42 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         }
         
         // Caso na pagina atual ainda exista espaco para esta chave, sera escrito neste local
-        else if(page->num_keys < MAX_KEYS - 1)
+       
+        // Shifita os itens para frente e os insere, esta em uma ordenacao do vetor bastante eficiente para este caso
+        for(int i = (page->num_keys - 1); i >= pos; i--)
         {
-            // Shifita os itens para frente e os insere, esta em uma ordenacao do vetor bastante eficiente para este caso
-            for(int i = (page->num_keys - 1); i >= pos; i--)
-            {
-                swap_bytes(&(page->key[i]), &(page->key[i+1]), sizeof(int32_t));
-                swap_bytes(&(page->byte_offset[i]), &(page->byte_offset[i+1]), sizeof(int64_t));
-                swap_bytes(&(page->next_rrn[i+1]), &(page->next_rrn[i+2]), sizeof(int32_t));
-            }
+            swap_bytes(&(page->key[i]), &(page->key[i+1]), sizeof(int32_t));
+            swap_bytes(&(page->byte_offset[i]), &(page->byte_offset[i+1]), sizeof(int64_t));
+            swap_bytes(&(page->next_rrn[i+1]), &(page->next_rrn[i+2]), sizeof(int32_t));
+        }
 
-            // Escrever as informacoes
-            page->key[pos] = promoted->key[0];
-            page->byte_offset[pos] = promoted->byte_offset[0];
-            page->next_rrn[pos + 1] = promoted->cur_rrn;
-            page->num_keys++;
-            page->cur_rrn = cur_rrn;
+        // Escrever as informacoes
+        page->key[pos] = promoted->key[0];
+        page->byte_offset[pos] = promoted->byte_offset[0];
+        page->next_rrn[pos + 1] = promoted->cur_rrn;
+        page->num_keys++;
+        page->cur_rrn = cur_rrn;
 
-            // Salvar pagina
-            bnode_save(btree, page); 
-            btree->num_keys++;      
-
-            free(page);
-            return false;
+        // for (int i = 0; i < page->num_keys; i++)
+        // {
+        //     printf("%d", page->key[i]);
+        // }
+        // printf("\n");
         
-        } 
+
+        // Salvar pagina
+        bnode_save(btree, page); 
+        btree->num_keys++;      
+        
         // Deu overflow e temos que criar uma nova pagina e apos isso fazer split
-        else
+        if (page->num_keys >= MAX_KEYS - 1)
         { 
             // Cria pagina
             newpage = bnode_create();
             newpage->cur_rrn = btree->next_rrn;
-            page->cur_rrn = cur_rrn;
             
             // Faz overflow
-            split(inserted, page, newpage, promoted, pos);
+            split(page, newpage, promoted);
             
             // Escreve as novas paginas
             bnode_save(btree, page);
@@ -337,6 +333,11 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
             free(page);
             free(newpage);
             return true;
+        }
+        else
+        {
+            free(page);
+            return false;
         }
     }
 }
