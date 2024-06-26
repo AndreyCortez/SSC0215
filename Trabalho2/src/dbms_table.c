@@ -45,6 +45,7 @@ Table *table_create(char *path, char ***raw_data, char *format, int num_rows)
         reg.tam_reg = format_len(table->format, raw_data[i]) + register_header_size;
         reg.data = format_data(table->format, raw_data[i]);
         reg.prox_reg = -1;
+        //printf("%lld %d\n", table->next_byte_offset, reg.tam_reg);
         table_append_register(table, reg);
         free(reg.data);
     }
@@ -184,14 +185,14 @@ bool table_append_register(Table *table, Register reg)
         return false;
 
     // Para anexar um registro é necessário estar no fim do arquivo
-    fseek(table->f_pointer, table->next_byte_offset, SEEK_SET);
+    reg.byte_offset = table->next_byte_offset;
 
     // Função que escreve um registro no arquivo
     register_write(reg, table->f_pointer, table->format);
     table->num_reg += 1;
 
     // Ao anexar a tabela recebe um novo top
-    table->next_byte_offset = ftell(table->f_pointer);
+    table->next_byte_offset += reg.tam_reg;
     write_table_header(table, '0');
 
     // No final da execução o ponteiro do arquivo volta para onde ele estava antes
@@ -676,6 +677,28 @@ bool search_using_index(Table *table, void *key)
     }
 
     return false;
+}
+
+bool table_create_btree(Table *table, char* path, int key_row, int key_size)
+{
+    Btree* btree = btree_create(path);
+    btree_save_header(btree, '0');
+
+    table_reset_register_pointer(table);
+    while (table_move_to_next_register(table))
+    {
+        // printf("inseriu algo\n");
+        btree_insert(btree, *((int32_t *)get_data_in_collumn(table->current_register.data, table->format, key_row)), table->current_register.byte_offset);
+    }
+    
+    key_size++;
+    table->btree = btree;
+    table->btree_loaded = true;
+
+    
+    btree_save_header(btree, '1');
+    table_reset_register_pointer(table);
+    return true;
 }
 
 // Função usada para liberar a estrutura da tabela

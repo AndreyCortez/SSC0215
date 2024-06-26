@@ -412,6 +412,29 @@ int main()
         binarioNaTela(bin_path);
         binarioNaTela(index_bin_path);
     }
+    else if (command == 7)
+    {
+        // 4 binario1.bin index1.bin
+        char table_bin_path[100];
+        char index_bin_path[100];
+
+        scanf("%s", table_bin_path);
+        scanf("%s", index_bin_path);
+
+        Table *table = table_access(table_bin_path, format);
+        if (table == NULL)
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return 0;
+        }
+
+        // Cria-se um indice para a tabela no caminho especificado
+        // a PK é dada pela coluna 0 e seu tamanho é de 4 bytes
+        table_create_btree(table, index_bin_path, 0, 4);
+
+        table_free(&table);
+        binarioNaTela(index_bin_path);
+    }
     // Função de debug pra imprimir os registros removidos;
     else if (command == -1)
     {

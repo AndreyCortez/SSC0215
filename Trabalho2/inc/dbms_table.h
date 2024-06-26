@@ -10,6 +10,7 @@
 #include "csv.h"
 #include "dbms_format.h"
 #include "dbms_index.h"
+#include "dbms_btree.h"
 #include "dbms_register.h"
 
 
@@ -33,6 +34,9 @@ typedef struct
     
     Index index;
     bool index_loaded;
+
+    Btree *btree;
+    bool btree_loaded;
 
     // Essa variável decide o estado da busca dos intens dentro da tabela
     // 0 : Uma busca não esta em progresso ou a busca com indice retornou false
@@ -74,5 +78,7 @@ bool table_insert_new_row(Table* table, char** row);
 
 bool table_create_index(Table *table, char* path, int key_row, int key_size);
 bool table_load_index(Table *table, char *path, int key_row, int key_size);
+
+bool table_create_btree(Table *table, char* path, int key_row, int kew_size);
 
 #endif
