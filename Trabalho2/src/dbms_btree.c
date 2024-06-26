@@ -176,65 +176,71 @@ int32_t bnode_search_key(Bnode* bnode, int key){
 // Dividir o vetor de chaves
 int split(Bnode *new, Bnode* page, Bnode* newpage, Bnode *promoted, int pos)
 {
-    //printf("oi\n");
-    int chaves[MAX_KEYS], refs[MAX_KEYS], childs[MAX_KEYS+1];
+    int chaves[MAX_KEYS + 1];
+    int64_t refs[MAX_KEYS + 1];
+    int childs[MAX_KEYS + 2];
 
-    // Atribuir uma metada das informacoes para um vetor
-    for(int i = 0; i < pos; i ++)
+    newpage->num_keys = 0;
+    page->num_keys = 0;
+
+    for(int i = 0; i < pos; i++)
     {
         chaves[i] = page->key[i];
         refs[i] = page->byte_offset[i];
         childs[i] = page->next_rrn[i];
     }
 
-    // Guardar as informacoes do indice do meio
-    // Pode dar errado aqui
-    childs[pos] = page->cur_rrn;
     chaves[pos] = new->key[0];
     refs[pos] = new->byte_offset[0];
+    childs[pos] = page->next_rrn[pos];
     childs[pos + 1] = new->cur_rrn;
-    
-    // Atribuir as informacoes da outra metade
-    for(int i = pos, j = pos + 1; j < MAX_KEYS; i++, j++){
-        chaves[j] = page->key[i];
-        refs[j] = page->byte_offset[i];
-        childs[j+1] = page->next_rrn[i];
+
+    for(int i = pos; i < MAX_KEYS; i++)
+    {
+        chaves[i + 1] = page->key[i];
+        refs[i + 1] = page->byte_offset[i];
+        childs[i + 2] = page->next_rrn[i + 1];
     }
 
-    // Guardar as informacoes importantes, para nao perder a referencia
-    promoted->key[0] = chaves[MAX_KEYS/2];
-    promoted->byte_offset[0] = refs[MAX_KEYS/2];
-    promoted->cur_rrn =  newpage->cur_rrn;
+    int mid = (MAX_KEYS + 1) / 2;
+    promoted->key[0] = chaves[mid];
+    promoted->byte_offset[0] = refs[mid];
+    promoted->cur_rrn = newpage->cur_rrn;
 
-    // As informacoes referenciadas anteriormente serao atribuidas agora
-    for(int i = 0; i < MAX_KEYS / 2; i++){
+    for(int i = 0; i < mid; i++)
+    {
         page->key[i] = chaves[i];
         page->byte_offset[i] = refs[i];
         page->next_rrn[i] = childs[i];
+        page->num_keys++;
     }
+    page->next_rrn[mid] = childs[mid];
 
-    page->next_rrn[MAX_KEYS / 2] = childs[MAX_KEYS / 2];
-
-    // Inicializar as outras posicoes dos novos vetores para evitar sujeiras
-    for(int i = MAX_KEYS / 2; i < MAX_KEYS - 1; i++){
-        page->key[i] = -1;
-        page->byte_offset[i] = -1;
-        page->next_rrn[i+1] = -1;
-    }
-
-    // Inicializar as outras posicoes dos novos vetores para evitar sujeiras
-    for(int i = (MAX_KEYS / 2) + 1, j = 0; i < MAX_KEYS; j++, i++){
+    for(int i = mid + 1, j = 0; i <= MAX_KEYS; i++, j++)
+    {
         newpage->key[j] = chaves[i];
         newpage->byte_offset[j] = refs[i];
         newpage->next_rrn[j] = childs[i];
+        newpage->num_keys++;
     }
-    
-    // Atualizar informacoes do pagina
-    newpage->next_rrn[MAX_KEYS - (MAX_KEYS / 2)] = childs[MAX_KEYS];
+    newpage->next_rrn[newpage->num_keys] = childs[MAX_KEYS + 1];
+
+    for(int i = page->num_keys; i < MAX_KEYS - 1; i++)
+    {
+        page->key[i] = -1;
+        page->byte_offset[i] = -1;
+        page->next_rrn[i + 1] = -1;
+    }
+
+    for(int i = newpage->num_keys; i < MAX_KEYS - 1; i++)
+    {
+        newpage->key[i] = -1;
+        newpage->byte_offset[i] = -1;
+        newpage->next_rrn[i + 1] = -1;
+    }
+
     newpage->height = page->height;
-    newpage->num_keys = 1;
-    page->num_keys = 2;
-    
+
     return true;
 }
 
