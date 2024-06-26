@@ -5,13 +5,15 @@
 
 #include "dbms_btree.h"
 // dentro de cada pagina, as chaves sao ordenadas em ordem crescente
+void swap_bytes(void *a, void *b, size_t n) 
+{
+    void *temp = malloc(n);
 
-void swap(int *a, int *b){
-    int temp = *a;
-    *a = *b;
-    *b = temp;
+    memcpy(temp, a, n);
+    memcpy(a, b, n);
+    memcpy(b, temp, n);
 
-    return;
+    free(temp);
 }
 
 // Criar cabecalho da arqvore b
@@ -279,9 +281,9 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
             // Shifita os itens para frente e os insere, esta em uma ordenacao do vetor bastante eficiente para este caso
             for(int i = (page->num_keys - 1); i >= pos; i--)
             {
-                swap(&(page->key[i]), &(page->key[i+1]));
-                swap(&(page->byte_offset[i]), &(page->byte_offset[i+1]));
-                swap(&(page->next_rrn[i+1]), &(page->next_rrn[i+2]));
+                swap_bytes(&(page->key[i]), &(page->key[i+1]), sizeof(int32_t));
+                swap_bytes(&(page->byte_offset[i]), &(page->byte_offset[i+1]), sizeof(int64_t));
+                swap_bytes(&(page->next_rrn[i+1]), &(page->next_rrn[i+2]), sizeof(int32_t));
             }
 
             // Escrever as informacoes
@@ -343,9 +345,9 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
         // atualizar as informacoes do no que esta sendo inserido na arvore
         node->key[0] = key;
         node->byte_offset[0] = byte_offset;
-        node->num_keys++;
+        node->num_keys = 1;
         node->height = 1;
-        node->cur_rrn = btree->root;
+        node->cur_rrn = 0;
 
         btree->num_keys++;
 

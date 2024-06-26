@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MAX_KEYS 4
+#define MAX_KEYS 5
 #define PAGE_SIZE 60
 
 typedef struct {
