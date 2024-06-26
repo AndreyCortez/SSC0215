@@ -464,6 +464,42 @@ int main()
         binarioNaTela(bin_path);
         binarioNaTela(index_bin_path);
     }
+    else if (command == -2)
+    {
+        char bin_path[100];
+        char index_bin_path[100];
+
+        scanf("%s %s", bin_path, index_bin_path);
+        Table *table = table_access(bin_path, format);
+        table_create_index(table, index_bin_path, 0, 4);
+
+        if (table == NULL)
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return 0;
+        }
+
+        table_create_btree(table, index_bin_path, 0, 4);
+
+        Btree *bt = table->btree;
+        for (int i = 0; i < 4; i++)
+        {
+            Bnode *bn = bnode_read(bt, i);
+            printf("cur bnode: %d\n", bn->cur_rrn);
+            printf("    num chaves: %d\n", bn->num_keys);
+
+            for (int j = 0; j < MAX_KEYS; j++)
+                printf("    key/off:%d %lld\n", bn->key[i], bn->byte_offset[i]);
+            for (int j = 0; j < MAX_KEYS; j++)
+                printf("    nextrrn:%d\n", bn->next_rrn[i]);
+        
+        }
+
+        table_free(&table);
+
+        binarioNaTela(bin_path);
+        binarioNaTela(index_bin_path);
+    }
 
     return 0;
 }

@@ -46,14 +46,16 @@ Bnode* bnode_create()
 {
     Bnode* node;
     node = calloc(1, sizeof(Bnode));
-    int i;
+    node->num_keys = 0;
+    node->cur_rrn = -1;
 
     // Inicializando os campos da arvore
-    for(i = 0; i < MAX_KEYS - 1; i++){
+    for(int i = 0; i < MAX_KEYS - 1; i++){
         node->next_rrn[i] = -1;
         node->byte_offset[i] = -1;
         node->key[i] = -1;
     }
+
     node->next_rrn[MAX_KEYS - 1] = -1;
 
     return node;
@@ -108,25 +110,26 @@ bool btree_save_header(Btree *btree, char status)
 
 // Ler um pagina ja existente
 Bnode *bnode_read(Btree* btree, int RRN){
-    int i;
     // Utilizaremos uma pagina auxiliar para receber os valores da leitura
     Bnode *node = bnode_create();
     node->cur_rrn = RRN;
     
     // Ajustar o ponteiro para o RRN correto
-    fseek(btree->f_pointer, PAGE_SIZE + (PAGE_SIZE * RRN), SEEK_SET);
+    fseek(btree->f_pointer, PAGE_SIZE * (1 + RRN), SEEK_SET);
     
     // Ler os campos
     fread(&(node->height), sizeof(int), 1, btree->f_pointer);
     fread(&(node->num_keys), sizeof(int), 1, btree->f_pointer);
+
+    //printf("%d\n", node->num_keys);
     
-    for(i = 0; i < MAX_KEYS - 1; i++)
+    for(int i = 0; i < MAX_KEYS - 1; i++)
     {
         fread(&(node->key[i]), sizeof(int), 1, btree->f_pointer);
         fread(&(node->byte_offset[i]), sizeof(int64_t), 1, btree->f_pointer);
     }
     
-    for(i = 0; i < MAX_KEYS; i++)
+    for(int i = 0; i < MAX_KEYS; i++)
         fread(&(node->next_rrn[i]), sizeof(int), 1, btree->f_pointer);
 
     return node;
@@ -135,9 +138,10 @@ Bnode *bnode_read(Btree* btree, int RRN){
 // Guardar uma pagina
 int bnode_save(Btree* btree, Bnode* bnode)
 {
+    //printf("2 %d\n", bnode->cur_rrn);
     // printf("%d\n", bnode->cur_rrn);
     // Ajustar o ponteiro para a posicao correta
-    fseek(btree->f_pointer, PAGE_SIZE + (PAGE_SIZE * bnode->cur_rrn), SEEK_SET);
+    fseek(btree->f_pointer, PAGE_SIZE * (1 + bnode->cur_rrn), SEEK_SET);
 
     // Escrever todos os campos
     fwrite(&(bnode->height), sizeof(int), 1, btree->f_pointer);
@@ -170,12 +174,13 @@ int32_t bnode_search_key(Bnode* bnode, int key){
 }
 
 // Dividir o vetor de chaves
-int split(Bnode *new, Bnode* page, Bnode* newpage, Bnode *promoted, int POS)
+int split(Bnode *new, Bnode* page, Bnode* newpage, Bnode *promoted, int pos)
 {
+    //printf("oi\n");
     int chaves[MAX_KEYS], refs[MAX_KEYS], childs[MAX_KEYS+1];
 
     // Atribuir uma metada das informacoes para um vetor
-    for(int i = 0; i < POS; i ++)
+    for(int i = 0; i < pos; i ++)
     {
         chaves[i] = page->key[i];
         refs[i] = page->byte_offset[i];
@@ -184,13 +189,13 @@ int split(Bnode *new, Bnode* page, Bnode* newpage, Bnode *promoted, int POS)
 
     // Guardar as informacoes do indice do meio
     // Pode dar errado aqui
-    childs[POS] = page->next_rrn[POS];
-    chaves[POS] = new->key[0];
-    refs[POS] = new->byte_offset[0];
-    childs[POS + 1] = new->next_rrn[0];
+    childs[pos] = page->cur_rrn;
+    chaves[pos] = new->key[0];
+    refs[pos] = new->byte_offset[0];
+    childs[pos + 1] = new->cur_rrn;
     
     // Atribuir as informacoes da outra metade
-    for(int i = POS, j = POS + 1; j < MAX_KEYS; i++, j++){
+    for(int i = pos, j = pos + 1; j < MAX_KEYS; i++, j++){
         chaves[j] = page->key[i];
         refs[j] = page->byte_offset[i];
         childs[j+1] = page->next_rrn[i];
@@ -227,8 +232,8 @@ int split(Bnode *new, Bnode* page, Bnode* newpage, Bnode *promoted, int POS)
     // Atualizar informacoes do pagina
     newpage->next_rrn[MAX_KEYS - (MAX_KEYS / 2)] = childs[MAX_KEYS];
     newpage->height = page->height;
-    newpage->num_keys = 2;
-    page->num_keys = 3;
+    newpage->num_keys = 1;
+    page->num_keys = 2;
     
     return true;
 }
@@ -255,6 +260,7 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         page = bnode_read(btree, inserted->cur_rrn);
         pos = bnode_search_key(page, inserted->key[0]);
 
+
         // Caso ja exista essa chave, finaliza a operacao
         if(pos != -1) 
         {
@@ -265,7 +271,12 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         int32_t cur_rrn = inserted->cur_rrn;
         // Recursivamente verifica se eh possivel guardar a pagina na posicao atual da recursao
         pos = page->num_keys;
-        inserted->cur_rrn = page->next_rrn[pos]; 
+        
+        //printf("%d\n", pos);
+        if (pos == MAX_KEYS - 1)
+            inserted->cur_rrn = -1; 
+        else
+            inserted->cur_rrn = page->next_rrn[pos + 1]; 
         retorno = inserir(btree, inserted, promoted);                    
         
         if(!retorno)
@@ -277,7 +288,6 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         // Caso na pagina atual ainda exista espaco para esta chave, sera escrito neste local
         else if(page->num_keys < MAX_KEYS - 1)
         {
-            //printf("%d\n", )
             // Shifita os itens para frente e os insere, esta em uma ordenacao do vetor bastante eficiente para este caso
             for(int i = (page->num_keys - 1); i >= pos; i--)
             {
@@ -307,7 +317,8 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
             // Cria pagina
             newpage = bnode_create();
             newpage->cur_rrn = btree->next_rrn;
-            page->cur_rrn = inserted->cur_rrn;
+            page->cur_rrn = cur_rrn;
+            
             // Faz overflow
             split(inserted, page, newpage, promoted, pos);
             
@@ -346,7 +357,7 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
         node->key[0] = key;
         node->byte_offset[0] = byte_offset;
         node->num_keys = 1;
-        node->height = 1;
+        node->height = 0;
         node->cur_rrn = 0;
 
         btree->num_keys++;
@@ -387,7 +398,7 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
             node->byte_offset[0] = promoted.byte_offset[0];
             node->next_rrn[0] = btree->root;
             node->next_rrn[1] = promoted.cur_rrn;
-            node->num_keys++;
+            node->num_keys = 1;
             node->height= left_page->height + 1;
             node->cur_rrn = btree->next_rrn;
             
