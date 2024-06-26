@@ -457,36 +457,3 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
 
 //     return -7;
 // }
-
-// Recebe um id nascimento e conta quantos acessos a paginas de disco foram feitos durante a busca 
-// int buscaArvoreB(FILE* dataset, FILE* indexBtree, int chave){
-//     // Le as informacoes da arvore e do arquivo de registro
-//     ARVOREB *bTree = lerCabecalhoArvoreB(indexBtree);
-//     CABECALHO *header = lerCabecalhoBin(dataset);
-//     REGISTRO aux;
-//     int acessos = 0;
-    
-//     // Caso qualquer um dos dois for inconsistente, finaliza a operaca
-//     if(header->status == '0' || bTree->status == '0'){
-//         free(header);
-//         free(bTree);
-//         return DEURUIM;
-//     }
-
-//     // Percorre o aquivo de registro ate a chave de busca
-//     int RRNRegistro = buscaPagina(bTree->noRaiz, indexBtree, chave, &acessos);
-
-//     // Caso tenha sido removido, ou nao inserido, retorna erro e finaliza a operacao
-//     if(RRNRegistro == DEURUIM) printf("Registro inexistente.\n");
-//     else{
-//     // Caso encontrou a chave, imprime as informacoes
-//         encontrarRegistroBin(dataset, RRNRegistro, &aux);
-//         imprimirRegistro(aux);
-//         printf("Quantidade de paginas da arvore-B acessadas: %d\n", acessos);
-//     } 
-
-//     // Libera a memoria
-//     free(header);
-//     free(bTree);
-//     return SUCESSO;
-// }
