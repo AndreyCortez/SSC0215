@@ -516,7 +516,10 @@ int main()
         btree_insert(bt, 4, 1);
         btree_insert(bt, 3, 1);
 
-        for (int i = 0; i < 2; i++)
+        
+        printf("root: %d\n", bt->root);
+
+        for (int i = 0; i < 4; i++)
         {
             Bnode *bn = bnode_read(bt, i);
             printf("cur bnode: %d\n", bn->cur_rrn);

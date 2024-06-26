@@ -213,35 +213,37 @@ int split(Bnode* page, Bnode* newpage, Bnode *promoted)
         childs[i + 2] = page->next_rrn[i + 1];
     }
 
+    for(int i = 0; i < MAX_KEYS - 1; i++)
+    {
+        page->key[i] = -1;
+        page->byte_offset[i] = -1;
+        page->next_rrn[i] = -1;
+        newpage->key[i] = -1;
+        newpage->byte_offset[i] = -1;
+        newpage->next_rrn[i] = -1;
+    }
+
+    page->next_rrn[MAX_KEYS - 1] = -1;
+    newpage->next_rrn[MAX_KEYS - 1] = -1;
+
     promoted->key[0] = page->key[pos];
     promoted->byte_offset[0] = page->byte_offset[pos];
     promoted->cur_rrn = newpage->cur_rrn;
 
     page->next_rrn[pos] = childs[pos];
 
-    for(int i = pos + 1, j = 0; i <= MAX_KEYS; i++, j++)
+    for(int i = pos + 2; i <= MAX_KEYS; i++)
     {
-        newpage->key[j] = chaves[i];
-        newpage->byte_offset[j] = refs[i];
-        newpage->next_rrn[j] = childs[i];
+        newpage->key[i - pos - 2] = chaves[i];
+        newpage->byte_offset[i - pos - 2] = refs[i];
         newpage->num_keys++;
     }
 
+    for(int i = pos + 3; i <= MAX_KEYS; i++)
+        newpage->next_rrn[i - pos - 3] = childs[i];
+    
+
     newpage->next_rrn[newpage->num_keys] = childs[MAX_KEYS + 1];
-
-    for(int i = page->num_keys; i < MAX_KEYS - 1; i++)
-    {
-        page->key[i] = -1;
-        page->byte_offset[i] = -1;
-        page->next_rrn[i + 1] = -1;
-    }
-
-    for(int i = newpage->num_keys; i < MAX_KEYS - 1; i++)
-    {
-        newpage->key[i] = -1;
-        newpage->byte_offset[i] = -1;
-        newpage->next_rrn[i + 1] = -1;
-    }
 
     newpage->height = page->height;
 
