@@ -62,23 +62,28 @@ Bnode* bnode_create()
 }
 
 // Ler cabecalho de uma arvore ja existente
-// ARVOREB *lerCabecalhoArvoreB(FILE *index){
-//     ARVOREB *aux = calloc(1, sizeof(ARVOREB));
-    
-//     fseek(index, 0, SEEK_SET);
-//     // Caso haja falha na alocacao, nao insere-se nada no cabecalho
-//     if(aux == NULL) return aux;
-    
-//     // Leitura de todos os campos
-//     fread(&(aux->status), sizeof(unsigned char), 1, index);
-//     fread(&(aux->noRaiz), sizeof(int), 1, index);
-//     fread(&(aux->nroNiveis), sizeof(int), 1, index);
-//     fread(&(aux->proxRRN), sizeof(int), 1, index);
-//     fread(&(aux->nroChaves), sizeof(int), 1, index);
-//     fread(&(aux->lixo), sizeof(char), 55, index);
+Btree *btree_acess(char *path){
+    FILE *index = fopen(path, "w+b");
 
-//     return aux;
-// }
+    if (index == NULL)
+        return NULL;
+
+    Btree *aux = malloc(sizeof(Btree));
+    aux->f_pointer = index;
+    
+    fseek(index, 0, SEEK_SET);
+    // Caso haja falha na alocacao, nao insere-se nada no cabecalho
+    if(aux == NULL) return aux;
+    
+    // Leitura de todos os campos
+    fread(&(aux->status), sizeof(unsigned char), 1, index);
+    fread(&(aux->root), sizeof(int), 1, index);
+    fread(&(aux->next_rrn), sizeof(int), 1, index);
+    fread(&(aux->num_keys), sizeof(int), 1, index);
+    fread(&(aux->trash), sizeof(char), PAGE_SIZE - 13, index);
+
+    return aux;
+}
 
 // Apos alteracores em uma arvore, estas devem ser salvas no seu respectivo arquivo
 bool btree_save_header(Btree *btree, char status)
@@ -165,20 +170,6 @@ int bnode_save(Btree* btree, Bnode* bnode)
         fwrite(&(bnode->next_rrn[i]), sizeof(int), 1, btree->f_pointer);
 
     return 1;
-}
-
-// Percorrer o vetor do no para procurar uma chave
-int32_t bnode_search_key(Bnode* bnode, int key){
-    int *v = bnode->key;
-    int tam = bnode->num_keys; 
-
-    for(int i = 0; v[i] <= key && i < tam; i++)
-    {
-        if(v[i] == key)
-            return i;
-    }
-    
-    return -1;
 }
 
 int32_t bnode_insert_pos(Bnode* bnode, int key){
@@ -406,39 +397,29 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
 }
 
 // Percorre o arquivo de indice buscando uma chave
-// int buscaPagina(int RRN, FILE* index, int chave, int *acessos){
-//     PAGINA *page;
-//     int POS, ret;
+int btree_search(Btree* btree, int chave, int32_t rrn)
+{
+    // caso não ache
+    if (rrn == -1)
+        return -1;
 
-//     // Caso nao exista nada nesta posicao (folha), finaliza a operacao
-//     if(RRN == VAZIO) return DEURUIM;
+    Bnode *page;
 
-//     // Ler a pagina da posicao atual
-//     page = lerPagina(RRN, index);
+    // Ler a pagina da posicao atual
+    page = bnode_read(btree, rrn);
+    int32_t ret = -1;
+    int32_t pos = bnode_insert_pos(page, chave);
+    printf("%d %d\n", rrn, pos);
+    printf("%d %d %d\n", page->key[pos], chave, page->next_rrn[pos]);
 
-//     // Conta quantos acessos a pagina foram feitos durante a busca
-//     (*acessos)++;
+    // Procurar no arquivo de indices a chave, recebe o sinal que dentro do vetor do no existe a chave
+    if(page->key[pos] == chave)
+        ret = page->byte_offset[pos];
+    else if (page->key[pos] < chave)
+        ret = btree_search(btree, chave, page->next_rrn[pos]);
+    else if (page->key[pos] > chave)
+        ret = btree_search(btree, chave, page->next_rrn[pos + 1]);
 
-//     // Procurar no arquivo de indices a chave, recebe o sinal que dentro do vetor do no existe a chave
-//     if((POS = buscaInterna(page->C, page->n, chave)) == ENCONTROU){
-//         // Sabendo que a chave existe nesse vetor, rercorre o este ate achar a chave
-//         for(int i = 0; i < page->n; i++){
-//             if(page->C[i] == chave){ 
-//                 ret = page->Pr[i];
-//             }
-//         }
-//         // Liberea a variavel
-//         free(page);
-//         // Retorna a referencia da chave
-//         return ret;
-//     } 
-//     else{
-//         // Caso nao esteja neste no, recursivamente continua percorrendo
-//         ret = buscaPagina(page->P[POS], index, chave, acessos);
-//         // Libera informacoes
-//         free(page);
-//         return ret;
-//     } 
-
-//     return -7;
-// }
+    free(page);
+    return ret; 
+}

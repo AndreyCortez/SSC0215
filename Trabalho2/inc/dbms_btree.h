@@ -37,6 +37,7 @@ Btree* btree_create(char *path);
 
 bool btree_save_header(Btree *btree, char status);
 Bnode *bnode_read(Btree* btree, int RRN);
+int btree_search(Btree* btree, int chave, int32_t rrn);
 // int32_t buscaArvoreB(FILE* dataset, FILE* indexBtree, int32_ chave);
 // int32_t inserirRegistroArvoreB(FILE* bin, FILE* indice);
 

@@ -328,14 +328,15 @@ int main()
         scanf("%s %s %d", bin_path, index_bin_path, &qtd_buscas);
         Table *table = table_access(bin_path, format);
 
-        // Criamos o arquivo de index para a tabela
-        table_create_index(table, index_bin_path, 0, 4);
-
         if (table == NULL)
         {
             printf("Falha no processamento do arquivo.\n");
             return 0;
         }
+
+        // Criamos o arquivo de index para a tabela
+        table_create_index(table, index_bin_path, 0, 4);
+
 
         for (int i = 0; i < qtd_buscas; i++)
         {
@@ -354,7 +355,7 @@ int main()
             // a PK e assim faz a busca usando o indice
             while (table_search_for_matches(table, (void **)valor_parametros, parametros, num_parametros))
             {
-                table_delete_current_register(table);
+                printar_registro_formatado(table->current_register.data, table->format);
             }
 
             // O indice é recriado a cada vez que há uma alteração na tabela
@@ -433,6 +434,54 @@ int main()
         table_create_btree(table, index_bin_path, 0, 4);
 
         table_free(&table);
+        binarioNaTela(index_bin_path);
+    }
+    else if (command == 8)
+    {
+        char bin_path[100];
+        char index_bin_path[100];
+        int qtd_buscas;
+
+        scanf("%s %s %d", bin_path, index_bin_path, &qtd_buscas);
+        Table *table = table_access(bin_path, format);
+
+        if (table == NULL)
+        {
+            printf("Falha no processamento do arquivo.\n");
+            return 0;
+        }
+
+        // Criamos o arquivo de index para a tabela
+        table_create_btree(table, index_bin_path, 0, 4);
+
+        for (int i = 0; i < qtd_buscas; i++)
+        {
+            int num_parametros = 1;
+
+            int *parametros;
+            char **valor_parametros;
+
+            // A seguinte função decodifica os parametros de entrada no formatp
+            // especificado
+            decodificar_parametros(&parametros, &valor_parametros, num_parametros);
+
+            // Cada vez que um match na tabela for encontrado o código que está dentro do while será executado
+            // A função table_search_for_matcher detecta automaticamente se o parametro que está sendo procurado é
+            // a PK e assim faz a busca usando o indice
+            while (table_search_for_matches(table, (void **)valor_parametros, parametros, num_parametros))
+            {
+                printar_registro_formatado(table->current_register.data, table->format);
+            }
+
+            // O indice é recriado a cada vez que há uma alteração na tabela
+            //table_create_index(table, index_bin_path, 0, 4);
+
+            liberar_parametros(&parametros, &valor_parametros, num_parametros);
+        }
+
+        table_free(&table);
+
+        binarioNaTela(bin_path);
         binarioNaTela(index_bin_path);
     }
     // Função de debug pra imprimir os registros removidos;

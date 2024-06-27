@@ -268,8 +268,21 @@ bool table_search_for_matches(Table *table, void **data, int *indexes, int num_p
         // Checa se o indice da PK está presente entre as chaves
         // e se o arquivo de indices está carregado
         for (int i = 0; i < num_parameters; i++)
-            if (indexes[i] == 0 && table->index_loaded)
+            if (indexes[i] == 0 && (table->index_loaded || table->btree_loaded))
             {
+                // A prioridade é busca com btree
+                if (table->btree_loaded)
+                {
+                    int32_t res = btree_search(table->btree, *((int32_t *)data[0]), table->btree->root);
+                    if (res != -1)
+                    {
+                        table->search_state = 1;
+                        return table_goto_register_on_offset(table, res);
+                    }
+                    else
+                        return false;
+                }
+
                 // caso esteja ele faz uma busca usando o indice
                 bool sr = search_using_index(table, data[i]);
 
