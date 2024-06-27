@@ -123,15 +123,23 @@ Bnode *bnode_read(Btree* btree, int RRN){
 
     //printf("%d\n", node->num_keys);
     
-    for(int i = 0; i < MAX_KEYS - 1; i++)
+    for(int i = 0; i < MAX_KEYS - 2; i++)
     {
         fread(&(node->key[i]), sizeof(int), 1, btree->f_pointer);
         fread(&(node->byte_offset[i]), sizeof(int64_t), 1, btree->f_pointer);
+        
+        // printf("%d ", node->key[i]);
+        // printf("%d \n", node->byte_offset[i]);
     }
+    // printf("\n");
     
-    for(int i = 0; i < MAX_KEYS; i++)
+    for(int i = 0; i < MAX_KEYS - 1; i++)
+    {
         fread(&(node->next_rrn[i]), sizeof(int), 1, btree->f_pointer);
+        // printf("%d ", node->next_rrn[i]);
+    }
 
+    // printf("\n=================");
     return node;
 }
 
@@ -147,13 +155,13 @@ int bnode_save(Btree* btree, Bnode* bnode)
     fwrite(&(bnode->height), sizeof(int), 1, btree->f_pointer);
     fwrite(&(bnode->num_keys), sizeof(int), 1, btree->f_pointer);
     
-    for(int i = 0; i < MAX_KEYS - 1; i++)
+    for(int i = 0; i < MAX_KEYS - 2; i++)
     {
         fwrite(&(bnode->key[i]), sizeof(int), 1, btree->f_pointer);
         fwrite(&(bnode->byte_offset[i]), sizeof(int64_t), 1, btree->f_pointer);
     }
     
-    for(int i = 0; i < MAX_KEYS; i++) 
+    for(int i = 0; i < MAX_KEYS - 1; i++) 
         fwrite(&(bnode->next_rrn[i]), sizeof(int), 1, btree->f_pointer);
 
     return 1;
@@ -194,58 +202,28 @@ int split(Bnode* page, Bnode* newpage, Bnode *promoted)
     int64_t refs[MAX_KEYS + 1];
     int childs[MAX_KEYS + 2];
 
-    newpage->num_keys = 0;
-    page->num_keys = (MAX_KEYS / 2) - 1;
+	newpage->num_keys = 2;
+	newpage->key[0] = page->key[2];
+	newpage->key[1] = page->key[3];
+	newpage->byte_offset[0] = page->byte_offset[2];
+	newpage->byte_offset[1] = page->byte_offset[3];
+	newpage->next_rrn[0] = page->next_rrn[2];
+	newpage->next_rrn[1] = page->next_rrn[3];
+	newpage->next_rrn[2] = page->next_rrn[4];
+	newpage->height = page->height;
 
-    for(int i = 0; i <= pos; i++)
-    {
-        chaves[i] = page->key[i];
-        refs[i] = page->byte_offset[i];
-        childs[i] = page->next_rrn[i];
-    }
-
-    childs[pos + 1] = page->next_rrn[pos + 1];
-
-    for(int i = pos; i < MAX_KEYS; i++)
-    {
-        chaves[i + 1] = page->key[i];
-        refs[i + 1] = page->byte_offset[i];
-        childs[i + 2] = page->next_rrn[i + 1];
-    }
-
-    for(int i = 0; i < MAX_KEYS - 1; i++)
-    {
-        page->key[i] = -1;
-        page->byte_offset[i] = -1;
-        page->next_rrn[i] = -1;
-        newpage->key[i] = -1;
-        newpage->byte_offset[i] = -1;
-        newpage->next_rrn[i] = -1;
-    }
-
-    page->next_rrn[MAX_KEYS - 1] = -1;
-    newpage->next_rrn[MAX_KEYS - 1] = -1;
-
-    promoted->key[0] = page->key[pos];
-    promoted->byte_offset[0] = page->byte_offset[pos];
+    promoted->key[0] = page->key[1];
+    promoted->byte_offset[0] = page->byte_offset[1];
     promoted->cur_rrn = newpage->cur_rrn;
 
-    page->next_rrn[pos] = childs[pos];
-
-    for(int i = pos + 2; i <= MAX_KEYS; i++)
-    {
-        newpage->key[i - pos - 2] = chaves[i];
-        newpage->byte_offset[i - pos - 2] = refs[i];
-        newpage->num_keys++;
-    }
-
-    for(int i = pos + 3; i <= MAX_KEYS; i++)
-        newpage->next_rrn[i - pos - 3] = childs[i];
-    
-
-    newpage->next_rrn[newpage->num_keys] = childs[MAX_KEYS + 1];
-
-    newpage->height = page->height;
+	page->num_keys = 1;
+	page->key[1] = -1;
+	page->byte_offset[1] = -1;
+	page->key[2] = -1;
+	page->byte_offset[2] = -1;
+	page->key[3] = -1;
+	page->byte_offset[3] = -1;
+	page->next_rrn[2] = page->next_rrn[3] = page->next_rrn[4] = -1;
 
     return true;
 }
@@ -273,13 +251,9 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         pos = bnode_insert_pos(page, inserted->key[0]);
 
         int32_t cur_rrn = inserted->cur_rrn;
+
         // Recursivamente verifica se eh possivel guardar a pagina na posicao atual da recursao
-        
-        //printf("%d\n", pos);
-        if (pos == MAX_KEYS - 1)
-            inserted->cur_rrn = -1; 
-        else
-            inserted->cur_rrn = page->next_rrn[pos + 1]; 
+        inserted->cur_rrn = page->next_rrn[pos + 1]; 
         retorno = inserir(btree, inserted, promoted);                    
         
         if(!retorno)
@@ -311,10 +285,6 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         // }
         // printf("\n");
         
-
-        // Salvar pagina
-        bnode_save(btree, page); 
-        btree->num_keys++;      
         
         // Deu overflow e temos que criar uma nova pagina e apos isso fazer split
         if (page->num_keys >= MAX_KEYS - 1)
@@ -326,6 +296,9 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
             // Faz overflow
             split(page, newpage, promoted);
             
+            // printf("%d %d %d\n", page->next_rrn[0], page->next_rrn[1], page->next_rrn[2]);
+            // printf("%d %d %d\n", newpage->next_rrn[0], newpage->next_rrn[1], newpage->next_rrn[2]);
+
             // Escreve as novas paginas
             bnode_save(btree, page);
             bnode_save(btree, newpage);
@@ -338,6 +311,10 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         }
         else
         {
+            // printf("%d %d %d\n", page->next_rrn[0], page->next_rrn[1], page->next_rrn[2]);
+        	// Salvar pagina
+        	bnode_save(btree, page); 
+        	btree->num_keys++;      
             free(page);
             return false;
         }
@@ -372,6 +349,7 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
         btree->num_keys++;
 
         // Salva pagina
+        // printf("oi %d %d %d\n", node->next_rrn[0], node->next_rrn[1], node->next_rrn[2]);
         bnode_save(btree, node);
         free(node);
 

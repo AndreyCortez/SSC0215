@@ -511,10 +511,12 @@ int main()
         btree_save_header(bt, '0');
 
     
-        btree_insert(bt, 2, 1);
         btree_insert(bt, 1, 1);
-        btree_insert(bt, 4, 1);
+        btree_insert(bt, 2, 1);
         btree_insert(bt, 3, 1);
+        btree_insert(bt, 4, 1);
+        btree_insert(bt, 5, 1);
+        btree_insert(bt, 6, 1);
 
         
         printf("root: %d\n", bt->root);
@@ -524,6 +526,7 @@ int main()
             Bnode *bn = bnode_read(bt, i);
             printf("cur bnode: %d\n", bn->cur_rrn);
             printf("    num chaves: %d\n", bn->num_keys);
+            
 
             for (int j = 0; j < bn->num_keys; j++)
                 printf("    key/off:%d %lld\n", bn->key[j], bn->byte_offset[j]);
