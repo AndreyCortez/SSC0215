@@ -63,7 +63,7 @@ Bnode* bnode_create()
 
 // Ler cabecalho de uma arvore ja existente
 Btree *btree_acess(char *path){
-    FILE *index = fopen(path, "w+b");
+    FILE *index = fopen(path, "r+b");
 
     if (index == NULL)
         return NULL;
@@ -77,10 +77,19 @@ Btree *btree_acess(char *path){
     
     // Leitura de todos os campos
     fread(&(aux->status), sizeof(unsigned char), 1, index);
+    
+    if (aux->status != '1')
+    {
+        fclose(index);
+        return NULL;
+    }
+
     fread(&(aux->root), sizeof(int), 1, index);
     fread(&(aux->next_rrn), sizeof(int), 1, index);
     fread(&(aux->num_keys), sizeof(int), 1, index);
     fread(&(aux->trash), sizeof(char), PAGE_SIZE - 13, index);
+
+    fflush(index);
 
     return aux;
 }
@@ -89,7 +98,7 @@ Btree *btree_acess(char *path){
 bool btree_save_header(Btree *btree, char status)
 {
     FILE *index = btree->f_pointer;
-
+    rewind(index);
     // Apontar para o inicio do arquivo
     fseek(index, 0, SEEK_SET);
 
@@ -109,12 +118,15 @@ bool btree_save_header(Btree *btree, char status)
     }
 
     fwrite(&(btree->trash), sizeof(char), 55, index);
+    fflush(index);
 
     return true;
 }
 
 // Ler um pagina ja existente
-Bnode *bnode_read(Btree* btree, int RRN){
+Bnode *bnode_read(Btree* btree, int RRN)
+{
+    fflush(btree->f_pointer);
     // Utilizaremos uma pagina auxiliar para receber os valores da leitura
     Bnode *node = bnode_create();
     node->cur_rrn = RRN;
@@ -151,8 +163,8 @@ Bnode *bnode_read(Btree* btree, int RRN){
 // Guardar uma pagina
 int bnode_save(Btree* btree, Bnode* bnode)
 {
-    //printf("2 %d\n", bnode->cur_rrn);
-    // printf("%d\n", bnode->cur_rrn);
+    fflush(btree->f_pointer);
+    rewind(btree->f_pointer);
     // Ajustar o ponteiro para a posicao correta
     fseek(btree->f_pointer, PAGE_SIZE * (1 + bnode->cur_rrn), SEEK_SET);
 
@@ -168,7 +180,7 @@ int bnode_save(Btree* btree, Bnode* bnode)
     
     for(int i = 0; i < MAX_KEYS - 1; i++) 
         fwrite(&(bnode->next_rrn[i]), sizeof(int), 1, btree->f_pointer);
-
+    
     return 1;
 }
 
@@ -396,30 +408,34 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
     return 1;
 }
 
-// Percorre o arquivo de indice buscando uma chave
-int btree_search(Btree* btree, int chave, int32_t rrn)
-{
-    // caso não ache
+// Percorre o arquivo de índice buscando uma chave
+int btree_search(Btree* btree, int chave, int32_t rrn) {
+    // Caso não ache
     if (rrn == -1)
         return -1;
 
-    Bnode *page;
+    Bnode *page = bnode_read(btree, rrn);
 
-    // Ler a pagina da posicao atual
-    page = bnode_read(btree, rrn);
     int32_t ret = -1;
     int32_t pos = bnode_insert_pos(page, chave);
-    printf("%d %d\n", rrn, pos);
-    printf("%d %d %d\n", page->key[pos], chave, page->next_rrn[pos]);
 
-    // Procurar no arquivo de indices a chave, recebe o sinal que dentro do vetor do no existe a chave
-    if(page->key[pos] == chave)
-        ret = page->byte_offset[pos];
-    else if (page->key[pos] < chave)
-        ret = btree_search(btree, chave, page->next_rrn[pos]);
-    else if (page->key[pos] > chave)
-        ret = btree_search(btree, chave, page->next_rrn[pos + 1]);
+    if (pos < page->num_keys)
+    {
+        // Procurar no arquivo de índices a chave
+        if (page->key[pos] == chave) 
+            ret = page->byte_offset[pos];
+        else 
+            ret = btree_search(btree, chave, page->next_rrn[pos]);
+
+    } 
+    else
+    {
+        if (page->key[pos - 1] == chave) 
+            ret = page->byte_offset[pos];
+        else if (page->key[pos - 1] < chave)
+            ret = btree_search(btree, chave, page->next_rrn[pos]);
+    }
 
     free(page);
-    return ret; 
+    return ret;
 }

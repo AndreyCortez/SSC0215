@@ -544,6 +544,9 @@ bool table_insert_new_row(Table *table, char **row)
 
     // Colocamos o status do arquivo como consitente
     write_table_header(table, '1');
+    btree_save_header(table->btree, '0');
+    btree_insert(table->btree, *((int32_t *)get_data_in_collumn(new_register.data, table->format, 0)), new_register.byte_offset);
+    btree_save_header(table->btree, '1');
 
     // Liberamos a memória alocada
     register_free(&new_register);

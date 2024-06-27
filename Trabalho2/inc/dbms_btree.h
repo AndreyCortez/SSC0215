@@ -34,6 +34,7 @@ typedef struct {
 // int32_t buscarIndice(FILE* indexBtree, int32_ chave);
 int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset);
 Btree* btree_create(char *path);
+Btree *btree_acess(char *path);
 
 bool btree_save_header(Btree *btree, char status);
 Bnode *bnode_read(Btree* btree, int RRN);
