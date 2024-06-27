@@ -481,19 +481,20 @@ int main()
 
         table_create_btree(table, index_bin_path, 0, 4);
 
-        Btree *bt = table->btree;
+        // Btree *bt = table->btree;
         for (int i = 0; i < 4; i++)
         {
-            Bnode *bn = bnode_read(bt, i);
-            printf("cur bnode: %d\n", bn->cur_rrn);
-            printf("    num chaves: %d\n", bn->num_keys);
+            // Bnode *bn = bnode_read(bt, i);
+            // printf("cur bnode: %d\n", bn->cur_rrn);
+            // printf("    num chaves: %d\n", bn->num_keys);
 
-            for (int j = 0; j < MAX_KEYS - 1; j++)
-                printf("    key/off:%d %lld\n", bn->key[j], bn->byte_offset[j]);
-            for (int j = 0; j < MAX_KEYS; j++)
-                printf("    nextrrn:%d\n", bn->next_rrn[j]);
+            // for (int j = 0; j < MAX_KEYS - 1; j++)
+            //     printf("    key/off:%d %lld\n", bn->key[j], bn->byte_offset[j]);
+            // for (int j = 0; j < MAX_KEYS; j++)
+            //     printf("    nextrrn:%d\n", bn->next_rrn[j]);
         
         }
+
 
         table_free(&table);
 
@@ -506,36 +507,38 @@ int main()
 
         scanf("%s", index_bin_path);
 
-        Btree *bt = btree_create(index_bin_path);
+        // Btree *bt = btree_create(index_bin_path);
 
-        btree_save_header(bt, '0');
+        // btree_save_header(bt, '0');
 
     
-        btree_insert(bt, 1, 1);
-        btree_insert(bt, 2, 1);
-        btree_insert(bt, 3, 1);
-        btree_insert(bt, 4, 1);
-        btree_insert(bt, 5, 1);
-        btree_insert(bt, 6, 1);
+        // btree_insert(bt, 1, 1);
+        // btree_insert(bt, 2, 1);
+        // btree_insert(bt, 3, 1);
+        // btree_insert(bt, 4, 1);
+        // btree_insert(bt, 5, 1);
+        // btree_insert(bt, 6, 1);
 
         
-        printf("root: %d\n", bt->root);
+        // printf("root: %d\n", bt->root);
 
         for (int i = 0; i < 4; i++)
         {
-            Bnode *bn = bnode_read(bt, i);
-            printf("cur bnode: %d\n", bn->cur_rrn);
-            printf("    num chaves: %d\n", bn->num_keys);
+            // Bnode *bn = bnode_read(bt, i);
+            // printf("cur bnode: %d\n", bn->cur_rrn);
+            // printf("    num chaves: %d\n", bn->num_keys);
             
 
-            for (int j = 0; j < bn->num_keys; j++)
-                printf("    key/off:%d %lld\n", bn->key[j], bn->byte_offset[j]);
-            for (int j = 0; j < bn->num_keys + 1; j++)
-                printf("    nextrrn:%d\n", bn->next_rrn[j]);
+            // for (int j = 0; j < bn->num_keys; j++)
+            //     printf("    key/off:%d %lld\n", bn->key[j], bn->byte_offset[j]);
+            // for (int j = 0; j < bn->num_keys + 1; j++)
+            //     printf("    nextrrn:%d\n", bn->next_rrn[j]);
         
         }
 
-        btree_save_header(bt, '1');
+        
+
+        // btree_save_header(bt, '1');
         binarioNaTela(index_bin_path);
     }
 

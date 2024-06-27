@@ -695,9 +695,11 @@ bool table_create_btree(Table *table, char* path, int key_row, int key_size)
     table->btree = btree;
     table->btree_loaded = true;
 
-    
     btree_save_header(btree, '1');
+    fseek(table->btree->f_pointer, 0x40, SEEK_SET);
+    putc(1, table->btree->f_pointer); 
     table_reset_register_pointer(table);
+
     return true;
 }
 
@@ -706,6 +708,8 @@ void table_free(Table **tab)
 {
     if ((*tab)->index_loaded)
         index_free(&((*tab)->index));
+    if ((*tab)->btree_loaded)
+        fclose((*tab)->btree->f_pointer);
     free((*tab)->format);
     register_free(&((*tab)->current_register));
     if ((*tab)->f_pointer)

@@ -197,11 +197,6 @@ int32_t bnode_insert_pos(Bnode* bnode, int key){
 // Dividir o vetor de chaves
 int split(Bnode* page, Bnode* newpage, Bnode *promoted)
 {
-    int pos = (MAX_KEYS / 2) - 1;
-    int chaves[MAX_KEYS + 1];
-    int64_t refs[MAX_KEYS + 1];
-    int childs[MAX_KEYS + 2];
-
 	newpage->num_keys = 2;
 	newpage->key[0] = page->key[2];
 	newpage->key[1] = page->key[3];
@@ -253,7 +248,7 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         int32_t cur_rrn = inserted->cur_rrn;
 
         // Recursivamente verifica se eh possivel guardar a pagina na posicao atual da recursao
-        inserted->cur_rrn = page->next_rrn[pos + 1]; 
+        inserted->cur_rrn = page->next_rrn[pos]; 
         retorno = inserir(btree, inserted, promoted);                    
         
         if(!retorno)
@@ -312,9 +307,9 @@ bool inserir(Btree *btree, Bnode *inserted, Bnode *promoted)
         else
         {
             // printf("%d %d %d\n", page->next_rrn[0], page->next_rrn[1], page->next_rrn[2]);
-        	// Salvar pagina
-        	bnode_save(btree, page); 
-        	btree->num_keys++;      
+        	// Salvar pagina     
+        	bnode_save(btree, page);
+        	btree->num_keys++;  
             free(page);
             return false;
         }
@@ -348,9 +343,11 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
 
         btree->num_keys++;
 
+
+
         // Salva pagina
         // printf("oi %d %d %d\n", node->next_rrn[0], node->next_rrn[1], node->next_rrn[2]);
-        bnode_save(btree, node);
+        bnode_save(btree, node);        
         free(node);
 
         return 1;
@@ -367,6 +364,7 @@ int32_t btree_insert(Btree *btree, int32_t key, int32_t byte_offset)
         aux.cur_rrn = btree->root;
         aux.key[0] = key;
         aux.byte_offset[0] = byte_offset;
+
 
         // Recebe o no raiz da subarvore
         retorno = inserir(btree, &aux, &promoted);
