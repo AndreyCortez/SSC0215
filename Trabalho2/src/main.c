@@ -559,7 +559,6 @@ int main()
         scanf("%s %s %d", bin_path, index_bin_path, &qtd_insercoes);
         Table *table = table_access(bin_path, format);
         table->btree = btree_acess(index_bin_path);
-        //table_create_btree(table, index_bin_path, 0, 4);
 
         if (table == NULL)
         {
@@ -571,6 +570,8 @@ int main()
             printf("Falha no processamento do arquivo.\n");
             return 0;
         }
+
+        table_create_index(table, index_bin_path, 0, 4);
 
         for (int i = 0; i < qtd_insercoes; i++)
         {

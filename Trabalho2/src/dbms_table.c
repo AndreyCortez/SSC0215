@@ -45,7 +45,7 @@ Table *table_create(char *path, char ***raw_data, char *format, int num_rows)
         reg.tam_reg = format_len(table->format, raw_data[i]) + register_header_size;
         reg.data = format_data(table->format, raw_data[i]);
         reg.prox_reg = -1;
-        //printf("%lld %d\n", table->next_byte_offset, reg.tam_reg);
+        // printf("%lld %d\n", table->next_byte_offset, reg.tam_reg);
         table_append_register(table, reg);
         free(reg.data);
     }
@@ -695,25 +695,27 @@ bool search_using_index(Table *table, void *key)
     return false;
 }
 
-bool table_create_btree(Table *table, char* path, int key_row, int key_size)
+bool table_create_btree(Table *table, char *path, int key_row, int key_size)
 {
-    Btree* btree = btree_create(path);
+    Btree *btree = btree_create(path);
     btree_save_header(btree, '0');
 
     table_reset_register_pointer(table);
     while (table_move_to_next_register(table))
     {
         // printf("inseriu algo\n");
-        btree_insert(btree, *((int32_t *)get_data_in_collumn(table->current_register.data, table->format, key_row)), table->current_register.byte_offset);
+        int32_t *aux = (int32_t *)get_data_in_collumn(table->current_register.data, table->format, key_row);
+        btree_insert(btree, *aux, table->current_register.byte_offset);
+        free(aux);
     }
-    
+
     key_size++;
     table->btree = btree;
     table->btree_loaded = true;
 
     btree_save_header(btree, '1');
     fseek(table->btree->f_pointer, 0x40, SEEK_SET);
-    putc(1, table->btree->f_pointer); 
+    putc(1, table->btree->f_pointer);
     table_reset_register_pointer(table);
 
     return true;
@@ -725,7 +727,10 @@ void table_free(Table **tab)
     if ((*tab)->index_loaded)
         index_free(&((*tab)->index));
     if ((*tab)->btree_loaded)
+    {
         fclose((*tab)->btree->f_pointer);
+        free((*tab)->btree);
+    }
     free((*tab)->format);
     register_free(&((*tab)->current_register));
     if ((*tab)->f_pointer)
